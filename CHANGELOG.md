@@ -1,5 +1,17 @@
 # PaddleSlots changelog
 
+## 0.7.6 — Settings freeze, combat and review fixes
+
+- **Fixes the game freezing when the Settings window closes.** In gamepad mode, opening the PaddleSlots page and then closing Settings (with the controller or the Close button) locked up the client. The page used Blizzard's standard settings list, which triggers this on Forever. It is now a custom page built from plain checkboxes, sliders and buttons. The options are unchanged. The page has to stay out of reach of the gamepad cursor, because the freeze returns (for the rest of the session) as soon as the cursor knows about its controls. With a controller, use the mouse on the page, or `/paddles` for keys, lock/unlock and reset.
+- **Panels no longer show or hide in combat.** Switching between controller and mouse/keyboard mid-fight used to trigger a blocked-action error, because the panels hold secure buttons. Visibility changes now wait until combat ends (#1).
+- **The setup guide no longer swallows input.** If it was first opened in combat, it kept every gamepad button and key for the rest of the session. It now only opens outside combat, and it reads input only when that input also reaches the game (#5).
+- **Upgrades from 0.6 / 0.7.0 migrate** even if those builds never saved a version number. The panels move to the 0.7.1 layout and the trigger prompts turn off, as the 0.7.1 notes promised (#4).
+- **Leaving Edit Mode saves only panels you dragged.** Panels you never moved stay attached to the crossbar (#6).
+- **Dragging an action off a paddle follows the action bar lock**, like the native bars: with bars locked, hold the pickup modifier (Shift by default). Edit Mode and the addon's unlock option still allow free dragging (#6).
+- **Paddle prompts follow the focused panel** even when the game's action bar scaling is off (#6).
+- **Stance bar check.** `/paddles diag` has a new "Native slot check" line that compares the reserved paddle slots with the slots the native crossbar uses. The addon also checks each stance or form bar when it becomes active, and warns in chat if that bar shares slots with a paddle (#2).
+- `/paddles clear` rejects a fractional paddle number instead of erroring, and `/paddles keys A B C D` applies the bindings once, so a duplicate-key warning prints once (#6).
+
 ## 0.7.5 — New paddle icons
 
 - New P1-P4 icons. Each shows its paddle's shape (P1/P2 the top levers, P3/P4 the bottom paddles, left and right) inside the same dark round button the crossbar uses for face buttons. Empty slots and the focused-panel prompts now use them instead of the native atlas, which only shows "P1" text.

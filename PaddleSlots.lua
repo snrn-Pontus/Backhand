@@ -357,6 +357,11 @@ end
 local function EnsureDatabase()
     PaddleSlotsDB = PaddleSlotsDB or {}
     local previousVersion = tonumber(PaddleSlotsDB.version) or 0
+    -- Every build since 0.7.1 writes a version. A profile that has data but no
+    -- version is therefore older, so it still needs the 0.7.1 migration.
+    if PaddleSlotsDB.version == nil and next(PaddleSlotsDB) ~= nil then
+        previousVersion = 7
+    end
     PaddleSlotsDB.version = 8
     PaddleSlotsDB.unlocked = PaddleSlotsDB.unlocked == true
 
@@ -620,7 +625,14 @@ local function IsGamepadInterfaceActive()
 end
 
 -- Hides the panels outside gamepad mode unless they are being positioned.
+-- The panels parent secure action buttons, so showing or hiding them is a
+-- protected action; in combat it waits for PLAYER_REGEN_ENABLED.
 UpdatePanelVisibility = function()
+    if InCombatLockdown() then
+        pendingAppearanceRefresh = true
+        return
+    end
+
     local shown = PaddleSlotsDB.gamepadOnly == false or IsGamepadInterfaceActive() or IsEditable()
     for panelIndex = 1, PANEL_COUNT do
         local panel = panelFrames[panelIndex]
@@ -951,7 +963,7 @@ end
 
 local function UpdatePromptVisibility(button)
     local panel = panelFrames[button.panelIndex]
-    local shown = panel ~= nil and panel.expanded == true and button.hasAction == true and ShouldShowPrompts()
+    local shown = panel ~= nil and panel.isActive == true and button.hasAction == true and ShouldShowPrompts()
     button.visual.prompt:SetShown(shown and button.visual.prompt.artAvailable)
 end
 
@@ -1137,6 +1149,12 @@ end
 
 local function PickupButtonAction(button)
     if InCombatLockdown() then
+        return
+    end
+    -- Like ActionButton OnDragStart: locked bars only give up actions with the
+    -- pickup modifier held. Edit Mode and the addon's unlock count as unlocked.
+    if not IsEditable() and GetNativeCVarBool("lockActionBars", false)
+        and not (type(IsModifiedClick) == "function" and IsModifiedClick("PICKUPACTION")) then
         return
     end
 
@@ -2394,7 +2412,8 @@ local function ApplyPaddleKeys(announce)
     end
 end
 
-local function SetPaddleKey(paddleIndex, key)
+-- Pass deferApply when setting several keys, then call ApplyPaddleKeys once.
+local function SetPaddleKey(paddleIndex, key, deferApply)
     key = (key and key:upper()) or "NONE"
     local allowed, reason = IsPaddleKeyAllowed(key)
     if not allowed then
@@ -2403,7 +2422,9 @@ local function SetPaddleKey(paddleIndex, key)
     end
 
     PaddleSlotsDB.paddleKeys["P" .. paddleIndex] = key
-    ApplyPaddleKeys(true)
+    if not deferApply then
+        ApplyPaddleKeys(true)
+    end
     return true
 end
 
@@ -2509,9 +2530,10 @@ local function EnsureCaptureFrame()
         end
         HandleCapturedKey(key)
     end)
+    -- The frame does not propagate input, so captured presses never reach the
+    -- native UI.
     frame:SetScript("OnGamePadButtonDown", function(_, button)
         HandleCapturedKey(button)
-        return false -- consumed; do not let the native UI act on the press
     end)
     frame:SetScript("OnUpdate", function()
         if captureState and GetTime() - captureState.startedAt > CAPTURE_TIMEOUT then
@@ -2661,22 +2683,21 @@ local function EnsureGuideFrame()
         frame:Hide()
     end)
 
-    -- Live readout: report presses without swallowing them.
-    if frame.EnableGamePadButton then
-        frame:EnableGamePadButton(true)
-        frame:SetScript("OnGamePadButtonDown", function(_, button)
-            frame.lastInput:SetText(string.format("Last input detected: %s (%s)", GetKeyDisplayName(button), button))
-            return true
+    -- Live readout: report presses without swallowing them. Propagation (for
+    -- keys and gamepad buttons alike) is set by SetPropagateKeyboardInput, which
+    -- is blocked in combat; ToggleGuideFrame never creates the frame in combat,
+    -- and input is only read once propagation is confirmed.
+    if frame.SetPropagateKeyboardInput and pcall(frame.SetPropagateKeyboardInput, frame, true) then
+        frame:EnableKeyboard(true)
+        frame:SetScript("OnKeyDown", function(_, key)
+            if not CAPTURE_IGNORED_KEYS[key] then
+                frame.lastInput:SetText(string.format("Last input detected: %s (%s)", GetKeyDisplayName(key), key))
+            end
         end)
-    end
-    if not InCombatLockdown() and frame.SetPropagateKeyboardInput then
-        local ok = pcall(frame.SetPropagateKeyboardInput, frame, true)
-        if ok then
-            frame:EnableKeyboard(true)
-            frame:SetScript("OnKeyDown", function(_, key)
-                if not CAPTURE_IGNORED_KEYS[key] then
-                    frame.lastInput:SetText(string.format("Last input detected: %s (%s)", GetKeyDisplayName(key), key))
-                end
+        if frame.EnableGamePadButton then
+            frame:EnableGamePadButton(true)
+            frame:SetScript("OnGamePadButtonDown", function(_, button)
+                frame.lastInput:SetText(string.format("Last input detected: %s (%s)", GetKeyDisplayName(button), button))
             end)
         end
     end
@@ -2708,6 +2729,11 @@ RefreshGuideFrame = function()
 end
 
 local function ToggleGuideFrame()
+    if not guideFrame and InCombatLockdown() then
+        Print("The setup guide can be opened after combat.")
+        return
+    end
+
     local frame = EnsureGuideFrame()
     if frame:IsShown() then
         frame:Hide()
@@ -2851,11 +2877,11 @@ local function RegisterEditModeIntegration()
         UpdatePanelVisualState(GetVisualPanelFromGamepadState(), true)
     end, addon)
 
+    -- Dragged panels save on OnDragStop. Re-saving every panel here would turn
+    -- a fallback UIParent anchor into a stored position and lose the crossbar
+    -- attachment for panels that were never moved.
     EventRegistry:RegisterCallback("EditMode.Exit", function()
         editModeActive = false
-        for panelIndex = 1, PANEL_COUNT do
-            SavePanelPosition(panelIndex)
-        end
         UpdateEditOverlays()
         UpdatePanelVisualState(GetVisualPanelFromGamepadState(), true)
     end, addon)
@@ -2887,7 +2913,8 @@ end
 local function ClearSlot(panelArg, paddleArg)
     local panelIndex = ParsePanelArgument(panelArg)
     local paddleIndex = tonumber(paddleArg)
-    if not panelIndex or not paddleIndex or paddleIndex < 1 or paddleIndex > 4 then
+    if not panelIndex or not paddleIndex or paddleIndex ~= math.floor(paddleIndex)
+        or paddleIndex < 1 or paddleIndex > PADDLE_COUNT then
         Print("Usage: /paddles clear <base|lt|rt|both> <1-4>")
         return
     end
@@ -2987,6 +3014,48 @@ local function GetDiagnosticLines(separator)
             values[#values + 1] = tostring(slot)
         end
         lines[#lines + 1] = "Reserved native slots: " .. table.concat(values, ", ")
+
+        -- Checks the reservation against the slots the native crossbar
+        -- addresses (GamepadActionBarBindingUtil): the standard pages, each
+        -- with its reserved UI slots removed, plus the active stance bar.
+        local constants = Constants and Constants.GamepadActionBarConstants or {}
+        local pageSlots = (constants.NUM_PAGEABLE_SLOTS_PER_GAMEPAD_ACTION_BAR_PAGE_UNIT_STANDARD_PAGE or 32)
+            - (constants.NUM_RESERVED_SLOTS_PER_GAMEPAD_ACTION_BAR_PAGE_UNIT or 4)
+        local pageCount = constants.NUM_STANDARD_PAGES_PER_GAMEPAD_ACTION_BAR_PAGE_UNIT or 3
+        local barSlots = constants.NUM_SLOTS_PER_GAMEPAD_ACTION_BAR or 8
+        local ranges = {}
+        if type(firstStorage) == "number" then
+            ranges[#ranges + 1] = { label = "pages", first = firstStorage, last = firstStorage + pageSlots * pageCount - 1 }
+        end
+        if type(stanceStorage) == "number" then
+            ranges[#ranges + 1] = { label = "active stance", first = stanceStorage, last = stanceStorage + barSlots - 1 }
+        end
+
+        local conflicts = {}
+        for _, slot in ipairs(nativeStorageSlots) do
+            for _, range in ipairs(ranges) do
+                if slot >= range.first and slot <= range.last then
+                    conflicts[#conflicts + 1] = string.format("%d (%s)", slot, range.label)
+                end
+            end
+        end
+
+        local rangeText = {}
+        for _, range in ipairs(ranges) do
+            rangeText[#rangeText + 1] = string.format("%s %d-%d", range.label, range.first, range.last)
+        end
+        local pool = DiscoverNativeStorageSlots()
+        if pool and #pool > 0 then
+            rangeText[#rangeText + 1] = string.format("valid pool %d-%d", pool[1], pool[#pool])
+        end
+        if type(stanceStorage) ~= "number" then
+            rangeText[#rangeText + 1] = "no stance active"
+        end
+
+        lines[#lines + 1] = string.format("Native slot check: %s%s%s",
+            #conflicts == 0 and "OK" or ("CONFLICT " .. table.concat(conflicts, ", ")),
+            separator,
+            table.concat(rangeText, ", "))
     end
 
     return lines
@@ -2999,57 +3068,150 @@ local function PrintDiagnostics()
     end
 end
 
-local function AddSettingsSection(layout, label)
-    if layout and type(CreateSettingsListSectionHeaderInitializer) == "function" then
-        layout:AddInitializer(CreateSettingsListSectionHeaderInitializer(label))
-    end
-end
-
-local function AddSettingsButton(layout, label, buttonText, onClick, tooltip)
-    if layout and type(CreateSettingsButtonInitializer) == "function" then
-        local addSearchTags = false
-        local initializer = CreateSettingsButtonInitializer(label, buttonText, onClick, tooltip, addSearchTags)
-        layout:AddInitializer(initializer)
-        return initializer
-    end
-    return nil
-end
-
--- Everything lives on one settings page. Subcategories make Blizzard rebuild
--- the category list on selection, which crashes the gamepad smart-navigation
--- cursor (ScrollUtil.lua IsSelected on a released list button).
+-- Everything lives on one canvas page built from plain widgets. Forever's
+-- vertical-layout settings list hangs the client when the Settings window is
+-- closed in gamepad mode after that page was shown (canvas pages such as
+-- ChattyLittleNpc's do not), and its subcategories crash the gamepad
+-- smart-navigation cursor (ScrollUtil.lua IsSelected on a released list button).
 local function RegisterSettings()
-    if settingsRegistered or not Settings or type(Settings.RegisterVerticalLayoutCategory) ~= "function" then
+    if settingsRegistered or not Settings or type(Settings.RegisterCanvasLayoutCategory) ~= "function" then
         return
     end
 
     settingsRegistered = true
 
-    local category, layout = Settings.RegisterVerticalLayoutCategory("PaddleSlots")
-    settingsCategory = category
+    -- Hidden until the Settings window displays it, so OnShow always fires.
+    local panel = CreateFrame("Frame")
+    panel.name = "PaddleSlots"
+    panel:Hide()
 
-    AddSettingsSection(layout, "Layout")
+    local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", 10, -10)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
 
-    local unlockSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_UNLOCKED",
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetSize(560, 1)
+    scrollFrame:SetScrollChild(content)
+
+    -- Each control registers a function that reloads it from PaddleSlotsDB.
+    local refreshers = {}
+    local y = -6
+    local sliderCount = 0
+
+    local note = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", 6, y)
+    note:SetWidth(540)
+    note:SetJustifyH("LEFT")
+    note:SetText("With a controller, use the mouse on this page. The gamepad cursor cannot enter it without freezing Forever when Settings is closed. Paddle keys, lock/unlock and reset also work through /paddles.")
+    y = y - 34
+
+    local function AttachTooltip(control, label, tooltip)
+        control:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(label, 1, 1, 1)
+            GameTooltip:AddLine(tooltip, nil, nil, nil, true)
+            GameTooltip:Show()
+        end)
+        control:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
+
+    local function AddSection(label)
+        y = y - 12
+        local header = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        header:SetPoint("TOPLEFT", 6, y)
+        header:SetText(label)
+        y = y - 26
+    end
+
+    local function AddCheckbox(key, label, tooltip, onChange)
+        local checkbox = CreateFrame("CheckButton", nil, content, "InterfaceOptionsCheckButtonTemplate")
+        checkbox:SetPoint("TOPLEFT", 14, y)
+        checkbox.Text:SetText(label)
+        checkbox:SetScript("OnClick", function(self)
+            PaddleSlotsDB[key] = self:GetChecked() and true or false
+            onChange(PaddleSlotsDB[key])
+        end)
+        AttachTooltip(checkbox, label, tooltip)
+        table.insert(refreshers, function()
+            checkbox:SetChecked(PaddleSlotsDB[key] == true)
+        end)
+        y = y - 30
+    end
+
+    -- OptionsSliderTemplate needs a global name on Classic-derived clients.
+    local function AddSlider(key, label, minValue, maxValue, step, tooltip)
+        sliderCount = sliderCount + 1
+        y = y - 16
+        local slider = CreateFrame("Slider", "PaddleSlotsSettingsSlider" .. sliderCount, content, "OptionsSliderTemplate")
+        slider:SetPoint("TOPLEFT", 22, y)
+        slider:SetWidth(250)
+        slider:SetMinMaxValues(minValue, maxValue)
+        slider:SetValueStep(step)
+        slider:SetObeyStepOnDrag(true)
+        if slider.Low then
+            slider.Low:SetText(string.format("%.2f", minValue))
+        end
+        if slider.High then
+            slider.High:SetText(string.format("%.2f", maxValue))
+        end
+
+        local function UpdateLabel(value)
+            slider.Text:SetText(string.format("%s: %.2f", label, value))
+        end
+
+        slider:SetScript("OnValueChanged", function(_, value)
+            value = math.floor(value / step + 0.5) * step
+            UpdateLabel(value)
+            -- Refreshing the page calls SetValue too; only real changes apply.
+            if math.abs((tonumber(PaddleSlotsDB[key]) or 0) - value) > 0.001 then
+                PaddleSlotsDB[key] = value
+                ApplyAppearance()
+            end
+        end)
+        AttachTooltip(slider, label, tooltip)
+        table.insert(refreshers, function()
+            local value = tonumber(PaddleSlotsDB[key]) or minValue
+            slider:SetValue(value)
+            UpdateLabel(value)
+        end)
+        y = y - 40
+    end
+
+    -- buttonText may be a function so the paddle rows can show the current key.
+    local function AddButton(label, buttonText, onClick, tooltip)
+        local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        text:SetPoint("TOPLEFT", 20, y - 5)
+        text:SetText(label)
+
+        local button = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+        button:SetSize(180, 22)
+        button:SetPoint("TOPLEFT", 250, y)
+        button:SetScript("OnClick", onClick)
+        AttachTooltip(button, label, tooltip)
+        if type(buttonText) == "function" then
+            table.insert(refreshers, function()
+                button:SetText(buttonText())
+            end)
+        else
+            button:SetText(buttonText)
+        end
+        y = y - 28
+    end
+
+    AddSection("Layout")
+
+    AddCheckbox(
         "unlocked",
-        PaddleSlotsDB,
-        Settings.VarType.Boolean,
         "Unlock panels outside Edit Mode",
-        false
-    )
-    unlockSetting:SetValueChangedCallback(function(_, value)
-        SetUnlocked(value == true)
-    end)
-    Settings.CreateCheckbox(
-        category,
-        unlockSetting,
-        "Normally PaddleSlots unlocks automatically while WoW Edit Mode is open. Enable this to move the four panels independently without opening Edit Mode."
+        "Normally PaddleSlots unlocks automatically while WoW Edit Mode is open. Enable this to move the four panels independently without opening Edit Mode.",
+        function(value)
+            SetUnlocked(value)
+        end
     )
 
-    AddSettingsButton(
-        layout,
+    AddButton(
         "Panel positions",
         "Reset All",
         function()
@@ -3058,29 +3220,19 @@ local function RegisterSettings()
         "Moves all four paddle panels back to their default spots inside the native crossbar: each panel above the centre of the bar that uses the same trigger combination, LT + RT in the middle of the cross."
     )
 
-    local gamepadOnlySetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_GAMEPAD_ONLY",
+    AddCheckbox(
         "gamepadOnly",
-        PaddleSlotsDB,
-        Settings.VarType.Boolean,
         "Only show in gamepad mode",
-        true
-    )
-    gamepadOnlySetting:SetValueChangedCallback(function()
-        UpdatePanelVisibility()
-    end)
-    Settings.CreateCheckbox(
-        category,
-        gamepadOnlySetting,
-        "Hides the paddle panels while the interface is in mouse and keyboard mode. They stay visible while unlocked or in Edit Mode."
+        "Hides the paddle panels while the interface is in mouse and keyboard mode. They stay visible while unlocked or in Edit Mode.",
+        function()
+            UpdatePanelVisibility()
+        end
     )
 
-    AddSettingsSection(layout, "Paddle inputs")
+    AddSection("Paddle inputs")
 
     for paddleIndex = 1, PADDLE_COUNT do
-        local initializer = AddSettingsButton(
-            layout,
+        AddButton(
             "Paddle P" .. paddleIndex,
             function()
                 return GetKeyDisplayName(GetPaddleKey(paddleIndex))
@@ -3090,13 +3242,9 @@ local function RegisterSettings()
             end,
             "Shows the input that triggers this paddle. Click it, then press the paddle to assign a new one."
         )
-        if initializer and initializer.data then
-            initializer.data.paddleSlotsPaddle = paddleIndex
-        end
     end
 
-    AddSettingsButton(
-        layout,
+    AddButton(
         "Assign all four in order",
         "Assign P1-P4",
         function()
@@ -3105,8 +3253,7 @@ local function RegisterSettings()
         "Prompts for P1, P2, P3, and P4 one after another."
     )
 
-    AddSettingsButton(
-        layout,
+    AddButton(
         "How to set up the paddles",
         "Setup guide",
         function()
@@ -3115,123 +3262,59 @@ local function RegisterSettings()
         "Step-by-step instructions for the Xbox Accessories app, plus a live readout of what WoW receives when you press a paddle."
     )
 
-    AddSettingsSection(layout, "Paddle HUD")
+    AddSection("Paddle HUD")
 
-    local scaleSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_HUD_SCALE",
+    AddSlider(
         "hudScale",
-        PaddleSlotsDB,
-        Settings.VarType.Number,
         "HUD scale",
-        1.0
-    )
-    scaleSetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateSlider(
-        category,
-        scaleSetting,
-        Settings.CreateSliderOptions(0.65, 1.50, 0.05),
+        0.65, 1.50, 0.05,
         "Scales all four PaddleSlots panels. 1.00 matches the size of the native crossbar slots."
     )
 
-    local opacitySetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_INACTIVE_OPACITY",
+    AddSlider(
         "inactiveOpacity",
-        PaddleSlotsDB,
-        Settings.VarType.Number,
         "Inactive panel opacity",
-        1.0
-    )
-    opacitySetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateSlider(
-        category,
-        opacitySetting,
-        Settings.CreateSliderOptions(0.10, 1.0, 0.05),
+        0.10, 1.0, 0.05,
         "Fades the three unfocused panels. The native crossbar does not fade unfocused bars, so 1.00 is the default."
     )
 
-    local glowSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_ACTIVE_GLOW",
+    AddCheckbox(
         "highlightActivePanel",
-        PaddleSlotsDB,
-        Settings.VarType.Boolean,
         "Highlight focused panel",
-        true
-    )
-    glowSetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateCheckbox(
-        category,
-        glowSetting,
-        "Draws the native crossbar focus highlight behind the BASE, LT, RT, or LT + RT panel that is currently active. Also respects the game's own action bar highlight setting."
+        "Draws the native crossbar focus highlight behind the BASE, LT, RT, or LT + RT panel that is currently active. Also respects the game's own action bar highlight setting.",
+        function()
+            ApplyAppearance()
+        end
     )
 
-    local glowStrengthSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_GLOW_STRENGTH",
+    AddSlider(
         "highlightStrength",
-        PaddleSlotsDB,
-        Settings.VarType.Number,
         "Focus highlight strength",
-        1.0
-    )
-    glowStrengthSetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateSlider(
-        category,
-        glowStrengthSetting,
-        Settings.CreateSliderOptions(0.0, 1.0, 0.05),
+        0.0, 1.0, 0.05,
         "Adjusts the strength of the focus highlight. 1.00 matches the native crossbar."
     )
 
-    local labelSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_SHOW_PANEL_LABELS",
+    AddCheckbox(
         "showPanelLabels",
-        PaddleSlotsDB,
-        Settings.VarType.Boolean,
         "Show LT / RT modifier icons",
-        false
-    )
-    labelSetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateCheckbox(
-        category,
-        labelSetting,
-        "Adds LT, RT, and LT + RT controller prompts below the paddle panels. Off by default because the native crossbar already shows those prompts next to the default panel positions."
+        "Adds LT, RT, and LT + RT controller prompts below the paddle panels. Off by default because the native crossbar already shows those prompts next to the default panel positions.",
+        function()
+            ApplyAppearance()
+        end
     )
 
-    local badgeSetting = Settings.RegisterAddOnSetting(
-        category,
-        "PADDLESLOTS_SHOW_PADDLE_BADGES",
+    AddCheckbox(
         "showPaddleBadges",
-        PaddleSlotsDB,
-        Settings.VarType.Boolean,
         "Show paddle prompts on the focused panel",
-        true
-    )
-    badgeSetting:SetValueChangedCallback(function()
-        ApplyAppearance()
-    end)
-    Settings.CreateCheckbox(
-        category,
-        badgeSetting,
-        "Shows the small P1-P4 glyph on assigned actions of the focused panel, like the native button prompts. Also respects the game's own action bar button prompt setting."
+        "Shows the small P1-P4 glyph on assigned actions of the focused panel, like the native button prompts. Also respects the game's own action bar button prompt setting.",
+        function()
+            ApplyAppearance()
+        end
     )
 
-    AddSettingsSection(layout, "Diagnostics")
+    AddSection("Diagnostics")
 
-    AddSettingsButton(
-        layout,
+    AddButton(
         "Gamepad integration",
         "Print Diagnostics",
         function()
@@ -3240,25 +3323,30 @@ local function RegisterSettings()
         "Prints native storage, LT/RT detection, and native art status to the chat frame. Same as /paddles diag."
     )
 
-    Settings.RegisterAddOnCategory(category)
-end
+    content:SetHeight(-y + 10)
 
--- Updates the paddle rows while the settings page is open. Rows re-evaluate
--- their button text on their own the next time the page is displayed.
-RefreshSettingsKeyRows = function()
-    if not SettingsPanel or not SettingsPanel:IsShown() or type(SettingsPanel.GetSettingsList) ~= "function" then
-        return
-    end
-    pcall(function()
-        local list = SettingsPanel:GetSettingsList()
-        if list and list.ScrollBox and list.ScrollBox.ForEachFrame then
-            list.ScrollBox:ForEachFrame(function(frame)
-                if frame.data and frame.data.paddleSlotsPaddle and frame.Button and type(frame.EvaluateName) == "function" then
-                    frame.Button:SetText(frame:EvaluateName())
-                end
-            end)
+    local function RefreshControls()
+        for _, refresh in ipairs(refreshers) do
+            refresh()
         end
-    end)
+    end
+    -- Deliberately not announced to the gamepad cursor (SmartNavigation). Once
+    -- this page's controls are in its button list, closing Settings with the
+    -- controller (B, or A on Close) hangs the client for the rest of the
+    -- session. The controls are created at login and only reparented into the
+    -- Settings window, so the cursor never picks them up on its own.
+    panel:SetScript("OnShow", RefreshControls)
+
+    -- Keeps the page in step with slash commands and press-to-assign while open.
+    RefreshSettingsKeyRows = function()
+        if panel:IsVisible() then
+            RefreshControls()
+        end
+    end
+
+    local category = Settings.RegisterCanvasLayoutCategory(panel, panel.name)
+    Settings.RegisterAddOnCategory(category)
+    settingsCategory = category
 end
 
 local function OpenSettings()
@@ -3339,15 +3427,17 @@ SlashCmdList.PADDLESLOTS = function(message)
             end
         elseif option == "reset" then
             for paddleIndex = 1, PADDLE_COUNT do
-                SetPaddleKey(paddleIndex, "PADPADDLE" .. paddleIndex)
+                SetPaddleKey(paddleIndex, "PADPADDLE" .. paddleIndex, true)
             end
+            ApplyPaddleKeys(true)
             Print("Paddle inputs reset to the native paddle keys.")
         else
             for paddleIndex = 1, PADDLE_COUNT do
                 if args[paddleIndex + 1] then
-                    SetPaddleKey(paddleIndex, args[paddleIndex + 1])
+                    SetPaddleKey(paddleIndex, args[paddleIndex + 1], true)
                 end
             end
+            ApplyPaddleKeys(true)
             for paddleIndex = 1, PADDLE_COUNT do
                 Print(string.format("P%d: %s", paddleIndex, GetKeyDisplayName(GetPaddleKey(paddleIndex))))
             end
@@ -3380,6 +3470,34 @@ local MODIFIER_EMULATION_CVARS = {
     GamePadEmulateCtrl = true,
     GamePadEmulateAlt = true,
 }
+
+-- The reserved paddle slots were picked because they were empty, not because
+-- the native crossbar can never address them. Stance bars have their own
+-- storage blocks and the client only reveals the active one, so check each
+-- stance as it becomes active and warn once if it shares slots with a paddle.
+local stanceOverlapWarned = {}
+local function CheckStanceOverlap()
+    if not nativeStorageEnabled or not C_GamepadUI
+        or type(C_GamepadUI.GetFirstGamepadActionBarStorageSlotIndexForActiveStance) ~= "function" then
+        return
+    end
+    local first = SafeCall(C_GamepadUI.GetFirstGamepadActionBarStorageSlotIndexForActiveStance)
+    if type(first) ~= "number" or stanceOverlapWarned[first] then
+        return
+    end
+    local constants = Constants and Constants.GamepadActionBarConstants or {}
+    local last = first + (constants.NUM_SLOTS_PER_GAMEPAD_ACTION_BAR or 8) - 1
+    for _, slot in ipairs(nativeStorageSlots) do
+        if slot >= first and slot <= last then
+            stanceOverlapWarned[first] = true
+            Print(string.format(
+                "Warning: this stance bar uses action slots %d-%d, which include paddle slot %d. Actions placed on either may replace each other. Please report this with /paddles diag output.",
+                first, last, slot
+            ))
+            return
+        end
+    end
+end
 
 addon:RegisterEvent("ADDON_LOADED")
 addon:RegisterEvent("PLAYER_LOGIN")
@@ -3437,6 +3555,7 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             end
         end
         CacheGamepadButtonIndices()
+        CheckStanceOverlap()
         RegisterEditModeIntegration()
         RegisterNativeModifierCallback()
         if not InCombatLockdown() then
@@ -3526,6 +3645,7 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
 
     if event == "GAMEPAD_STANCE_BAR_OVERRIDE_CHANGED" or event == "GAMEPAD_POSSESS_BAR_OVERRIDE_CHANGED" then
         RefreshButtons()
+        CheckStanceOverlap()
         return
     end
 
