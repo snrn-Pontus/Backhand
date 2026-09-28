@@ -1,5 +1,11 @@
 # PaddleSlots changelog
 
+## 0.7.7 — Actions saved per character
+
+- **Paddle actions and reserved native slots are now saved per character** (`SavedVariablesPerCharacter`). They used to be account-wide, so a second character of another class saw, and tried to cast, the first character's spells, and both characters fought over the same reserved action slots. Paddle keys, panel positions and appearance settings stay account-wide (#3).
+- **Migration.** The first time each character logs in after the update, it takes a copy of the old account-wide actions and reserved slots, so what that character saw before the update is still there. Slots that hold another class's spells can be cleared with `/paddles clear`. The old account-wide copies are kept until every character has logged in.
+- `/paddles diag` has a new "Storage scope" line that says whether this character's actions came from the account-wide migration.
+
 ## 0.7.6 — Settings freeze, combat and review fixes
 
 - **Fixes the game freezing when the Settings window closes.** In gamepad mode, opening the PaddleSlots page and then closing Settings (with the controller or the Close button) locked up the client. The page used Blizzard's standard settings list, which triggers this on Forever. It is now a custom page built from plain checkboxes, sliders and buttons. The options are unchanged. The page has to stay out of reach of the gamepad cursor, because the freeze returns (for the rest of the session) as soon as the cursor knows about its controls. With a controller, use the mouse on the page, or `/paddles` for keys, lock/unlock and reset.

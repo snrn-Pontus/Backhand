@@ -413,10 +413,13 @@ local function EnsureDatabase()
     PaddleSlotsDB.hudScale = math.max(0.65, math.min(1.50, tonumber(PaddleSlotsDB.hudScale) or 1.0))
     PaddleSlotsDB.inactiveOpacity = math.max(0.10, math.min(1.0, tonumber(PaddleSlotsDB.inactiveOpacity) or 1.0))
     PaddleSlotsDB.highlightStrength = math.max(0.0, math.min(1.0, tonumber(PaddleSlotsDB.highlightStrength) or 1.0))
-    PaddleSlotsDB.nativeSlots = PaddleSlotsDB.nativeSlots or {}
-    PaddleSlotsDB.fallbackActions = PaddleSlotsDB.fallbackActions or {}
     PaddleSlotsDB.panelPositions = PaddleSlotsDB.panelPositions or {}
 
+    -- Up to 0.7.6 the actions and reserved native slots lived here, account-wide.
+    -- They are now per character (see EnsureCharacterDatabase), but the account
+    -- copies are kept so every character can migrate them on its first login.
+    PaddleSlotsDB.nativeSlots = PaddleSlotsDB.nativeSlots or {}
+    PaddleSlotsDB.fallbackActions = PaddleSlotsDB.fallbackActions or {}
     for panelIndex = 1, PANEL_COUNT do
         PaddleSlotsDB.fallbackActions[panelIndex] = PaddleSlotsDB.fallbackActions[panelIndex] or {}
     end
@@ -471,6 +474,53 @@ local function EnsureDatabase()
         end
     end
     PaddleSlotsDB.migrateLegacyPanelPositions = nil
+end
+
+local function CopyTable(source)
+    if type(source) ~= "table" then
+        return source
+    end
+    local copy = {}
+    for key, value in pairs(source) do
+        copy[key] = CopyTable(value)
+    end
+    return copy
+end
+
+-- Actions and reserved native slots are per character: a spell that one class
+-- knows is nothing another class can cast, and action slot contents differ per
+-- character anyway. Before 0.7.7 both lived account-wide in PaddleSlotsDB, so a
+-- character that has no per-character table yet takes a copy of those values
+-- once. That keeps whatever it saw before the update. Wrong-class spells that
+-- came along can be cleared with /paddles clear.
+local function EnsureCharacterDatabase()
+    PaddleSlotsCharDB = PaddleSlotsCharDB or {}
+    local db = PaddleSlotsCharDB
+
+    if db.version == nil then
+        if type(PaddleSlotsDB.fallbackActions) == "table" and type(db.fallbackActions) ~= "table" then
+            db.fallbackActions = CopyTable(PaddleSlotsDB.fallbackActions)
+        end
+        if type(PaddleSlotsDB.nativeSlots) == "table" and type(db.nativeSlots) ~= "table" then
+            db.nativeSlots = CopyTable(PaddleSlotsDB.nativeSlots)
+        end
+        local copiedActions = false
+        for _, panelActions in pairs(db.fallbackActions or {}) do
+            if type(panelActions) == "table" and next(panelActions) ~= nil then
+                copiedActions = true
+            end
+        end
+        if copiedActions or next(db.nativeSlots or {}) ~= nil then
+            db.migratedFromAccount = true
+        end
+    end
+    db.version = 1
+
+    db.nativeSlots = db.nativeSlots or {}
+    db.fallbackActions = db.fallbackActions or {}
+    for panelIndex = 1, PANEL_COUNT do
+        db.fallbackActions[panelIndex] = db.fallbackActions[panelIndex] or {}
+    end
 end
 
 local function IsEditable()
@@ -690,7 +740,7 @@ local function DiscoverNativeStorageSlots()
 end
 
 local function SavedNativeSlotsAreUsable()
-    local saved = PaddleSlotsDB.nativeSlots
+    local saved = PaddleSlotsCharDB.nativeSlots
     if type(saved) ~= "table" or #saved ~= PANEL_COUNT * PADDLE_COUNT then
         return false
     end
@@ -708,7 +758,7 @@ end
 
 local function HasFallbackActions()
     for panelIndex = 1, PANEL_COUNT do
-        local panelActions = PaddleSlotsDB.fallbackActions and PaddleSlotsDB.fallbackActions[panelIndex]
+        local panelActions = PaddleSlotsCharDB.fallbackActions and PaddleSlotsCharDB.fallbackActions[panelIndex]
         if panelActions then
             for paddleIndex = 1, PADDLE_COUNT do
                 if panelActions[paddleIndex] then
@@ -726,7 +776,7 @@ local function InitializeNativeStorage()
     nativeStorageStatus = "unavailable"
 
     if SavedNativeSlotsAreUsable() then
-        for i, slot in ipairs(PaddleSlotsDB.nativeSlots) do
+        for i, slot in ipairs(PaddleSlotsCharDB.nativeSlots) do
             nativeStorageSlots[i] = slot
         end
         nativeStorageEnabled = true
@@ -770,7 +820,7 @@ local function InitializeNativeStorage()
         return
     end
 
-    PaddleSlotsDB.nativeSlots = chosen
+    PaddleSlotsCharDB.nativeSlots = chosen
     for i, slot in ipairs(chosen) do
         nativeStorageSlots[i] = slot
     end
@@ -1110,7 +1160,7 @@ local function SetFallbackAction(button, action)
         return
     end
 
-    PaddleSlotsDB.fallbackActions[button.panelIndex][button.paddleIndex] = action
+    PaddleSlotsCharDB.fallbackActions[button.panelIndex][button.paddleIndex] = action
     button.actionData = action
     ConfigureSecureAction(button)
     UpdateButtonVisual(button)
@@ -1421,7 +1471,7 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     if nativeStorageEnabled then
         button.actionSlot = GetNativeSlot(panelIndex, paddleIndex)
     else
-        button.actionData = PaddleSlotsDB.fallbackActions[panelIndex][paddleIndex]
+        button.actionData = PaddleSlotsCharDB.fallbackActions[panelIndex][paddleIndex]
     end
 
     buttons[panelIndex][paddleIndex] = button
@@ -1716,7 +1766,7 @@ end
 local function RefreshButtons()
     ForEachButton(function(button, panelIndex, paddleIndex)
         if not button.actionSlot then
-            button.actionData = PaddleSlotsDB.fallbackActions[panelIndex][paddleIndex]
+            button.actionData = PaddleSlotsCharDB.fallbackActions[panelIndex][paddleIndex]
         end
         ConfigureSecureAction(button)
         UpdateButtonVisual(button)
@@ -2989,6 +3039,7 @@ local function GetDiagnosticLines(separator)
     local lines = {
         "Storage mode: " .. (nativeStorageEnabled and "native C_GamepadUI action slots" or "SavedVariables fallback"),
         "Storage detail: " .. nativeStorageStatus,
+        "Storage scope: actions and reserved slots are per character" .. (PaddleSlotsCharDB.migratedFromAccount and " (copied from the account-wide profile of 0.7.6 or older)" or ""),
         string.format("Gamepad storage: first=%s%sstance=%s%spet=%s", tostring(firstStorage), separator, tostring(stanceStorage), separator, tostring(petStorage)),
         "Panel driver: " .. nativeHookStatus,
         string.format("LT binding: %s%sRT binding: %s", tostring(ltAction), separator, tostring(rtAction)),
@@ -3528,6 +3579,7 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         end
 
         EnsureDatabase()
+        EnsureCharacterDatabase()
         InitializeNativeStorage()
         CreateUI()
         RegisterSecureFrameRefs()

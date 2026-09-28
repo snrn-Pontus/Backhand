@@ -64,6 +64,8 @@ The client's own default config for the Elite Series 2 (vendor 1118, product 767
 
 Drag a spell, item, macro, or supported action-bar action onto any paddle slot. Press P1-P4 to activate the corresponding action in the currently active controller layer.
 
+Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\PaddleSlots.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\PaddleSlots.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/paddles clear`.
+
 ## Slash commands
 
 - `/paddles` — open native PaddleSlots settings.
@@ -85,6 +87,7 @@ Drag a spell, item, macro, or supported action-bar action onto any paddle slot. 
 `/paddles diag` reports:
 
 - native storage status and slots
+- storage scope (per character, and whether the actions were copied from an older account-wide profile)
 - LT / RT bindings
 - modifier-emulation CVars
 - LT / RT mapped button indices and current values
