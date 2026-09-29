@@ -4,6 +4,14 @@
 
 Forever's crossbar gives you the d-pad and the face buttons on four layers (no trigger, LT, RT, LT + RT). PaddleSlots adds a fifth group to each of those layers: a 2 x 2 grid for the P1 to P4 paddles of an Xbox Elite Series 2, the back buttons of a PlayStation DualSense Edge, or any other controller whose extra buttons can be mapped to keys on PC. That is 16 more actions, all reachable without taking your thumbs off the sticks.
 
+## What's new
+
+- **0.7.9**: Paddles now switch layers in combat. Before, they could stay on whichever layer was active when combat started.
+- **0.7.8**: **View Diagnostics** (or `/paddles diag copy`) opens the diagnostics as text you can copy into a bug report.
+- **0.7.7**: Paddle actions are saved per character, so an alt no longer sees your main's spells.
+
+Full history on the Changelog tab of each file.
+
 ![Paddle panels nested in the native crossbar](SCREENSHOT_1_URL)
 
 ## Looks and behaves like the native crossbar
@@ -47,7 +55,7 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 - Focus highlight and its strength
 - LT / RT modifier prompts under the panels (off by default, the crossbar already shows them)
 - Paddle prompts on the focused panel
-- Print Diagnostics, for bug reports
+- View Diagnostics, for bug reports
 
 ## Slash commands
 
@@ -59,15 +67,16 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 /paddles guide        open the setup guide
 /paddles test         print raw controller input for 30 seconds
 /paddles diag         print gamepad integration diagnostics
+/paddles diag copy    open the diagnostics as copyable text
 ```
 
 ## Notes
 
 - Built for **World of Warcraft: Forever** only. It uses Forever's native crossbar and gamepad API and does nothing on other clients.
-- Actions are stored in the client's spare gamepad action storage when a safe block is free, so they survive like any other action bar. Otherwise they are kept in the addon's saved variables.
-- Layer switching in combat uses a secure state driver when Forever exposes LT and RT as distinct modifiers. `/paddles diag` reports which mode is active.
+- Actions are saved per character. They are stored in the client's spare gamepad action storage when a safe block is free, so they survive like any other action bar. Otherwise they are kept in the addon's saved variables.
+- Layers switch in combat too. The paddles follow whichever crossbar bar has focus, or use a secure modifier driver if LT and RT are set up as Shift, Ctrl or Alt. `/paddles diag` reports which mode is active.
 - Not affiliated with ConsolePort. PaddleSlots does not replace the gamepad UI, it extends the one Forever ships.
 
 ## Reporting problems
 
-Run `/paddles diag`, copy the output from chat, and post it with a description of your controller and mapping software. If the game crashed, attach the error file from the `Errors` folder next to the game executable.
+Open **View Diagnostics** in the settings (or run `/paddles diag copy`), copy the report, and post it with a description of your controller and mapping software. If the game crashed, attach the error file from the `Errors` folder next to the game executable.
