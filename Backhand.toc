@@ -1,0 +1,27 @@
+## Interface: 16001
+## Title: |cff33ccffSNRN|r Backhand
+## Notes: Extra action slots for controller back paddles (Xbox Elite, DualSense Edge, Steam Input back buttons), built into WoW: Forever's native gamepad crossbar.
+## Author: SillyNameRandomNumber
+## Version: 0.7.9
+## IconTexture: Interface\AddOns\Backhand\Media\Icon.tga
+## X-Curse-Project-ID: 1707548
+## X-License: MIT
+## X-Website: https://github.com/snrn-Pontus/Backhand
+## X-Category: Action Bars
+## Category: Action Bars
+## Group: SNRN
+## SavedVariables: BackhandDB
+## SavedVariablesPerCharacter: BackhandCharDB
+
+Core.lua
+Database.lua
+ActionStorage.lua
+Buttons.lua
+FocusRouting.lua
+Layers.lua
+RawInput.lua
+Panels.lua
+PaddleKeys.lua
+Diagnostics.lua
+Settings.lua
+Backhand.lua

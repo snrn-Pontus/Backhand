@@ -1,4 +1,4 @@
-package-as: PaddleSlots
+package-as: Backhand
 
 # CurseForge automatic packaging. Dotfiles and this file are skipped by the
 # packager itself; everything listed here is kept in the repo but left out of

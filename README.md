@@ -1,17 +1,19 @@
-# PaddleSlots
+# Backhand
 
 Rear-paddle action panels for **WoW: Forever**, nested in the native gamepad crossbar. Built for the Xbox Elite Series 2; also works with the PlayStation DualSense Edge and any other controller whose extra buttons can be mapped to keys on PC.
 
-![PaddleSlots panels inside the Forever crossbar](screenshots/ui.png)
+Backhand is part of the SNRN addon family. It was called PaddleSlots up to version 0.7.9.
 
-Forever's crossbar gives you the d-pad and face buttons on four layers (no trigger, LT, RT, LT + RT). PaddleSlots adds a 2 x 2 group for the P1-P4 paddles to each layer: 16 more actions without taking your thumbs off the sticks. The panels use Blizzard's own crossbar art, expand and highlight exactly like the native bars, and sit next to the bar that uses the same trigger combination.
+![Backhand panels inside the Forever crossbar](screenshots/ui.png)
+
+Forever's crossbar gives you the d-pad and face buttons on four layers (no trigger, LT, RT, LT + RT). Backhand adds a 2 x 2 group for the P1-P4 paddles to each layer: 16 more actions without taking your thumbs off the sticks. The panels use Blizzard's own crossbar art, expand and highlight exactly like the native bars, and sit next to the bar that uses the same trigger combination.
 
 Built for **World of Warcraft: Forever** only (Interface 16001). It relies on Forever's native crossbar and gamepad API and does nothing on other clients.
 
 ## Quick start
 
 1. Map each paddle to a key WoW does not use. Xbox Elite with the Xbox Accessories app: paddle to F9, F10, F11, F12. Steam Input or reWASD (Xbox Elite, DualSense Edge, others): paddle to F13, F14, F15, F16.
-2. In game open **Settings > AddOns > PaddleSlots** (or type `/paddles`), click **Assign P1-P4** and press each paddle in turn.
+2. In game open **Settings > AddOns > Backhand** (or type `/paddles`), click **Assign P1-P4** and press each paddle in turn.
 3. Drag spells, items or macros onto the paddle slots. Hold LT, RT or both to fill the other layers.
 
 Panels can be moved in WoW's normal Edit Mode, or with **Unlock panels outside Edit Mode** in the settings. `/paddles reset` puts them back into the crossbar.
@@ -20,7 +22,7 @@ Panels can be moved in WoW's normal Edit Mode, or with **Unlock panels outside E
 
 Open:
 
-**Settings → AddOns → PaddleSlots**
+**Settings → AddOns → Backhand**
 
 or use:
 
@@ -40,9 +42,9 @@ Options include:
 
 ## Paddle inputs
 
-On Windows the Xbox Elite Series 2 does not report its paddles to games, and the DualSense Edge's back buttons arrive as copies of the face buttons. WoW only sees whatever the Xbox Accessories app, Steam Input or reWASD maps a paddle to, so PaddleSlots listens for a configurable input per paddle instead of assuming the native `PADPADDLE1-4` keys.
+On Windows the Xbox Elite Series 2 does not report its paddles to games, and the DualSense Edge's back buttons arrive as copies of the face buttons. WoW only sees whatever the Xbox Accessories app, Steam Input or reWASD maps a paddle to, so Backhand listens for a configurable input per paddle instead of assuming the native `PADPADDLE1-4` keys.
 
-PaddleSlots never takes over a button the native gamepad UI uses. **Settings -> AddOns -> PaddleSlots -> Paddle inputs** shows one row per paddle whose button reads the current input; click it and press the paddle to assign a new one. Accepted inputs are only ones WoW does not use:
+Backhand never takes over a button the native gamepad UI uses. **Settings -> AddOns -> Backhand -> Paddle inputs** shows one row per paddle whose button reads the current input; click it and press the paddle to assign a new one. Accepted inputs are only ones WoW does not use:
 
 - physical keyboard keys with no WoW binding (F9-F12 on a compact keyboard; also F6-F8, Page Up/Down, Scroll Lock, Pause, or Numpad keys), for the Xbox Accessories app's keyboard key mapping,
 - the Share button (unused by the native UI, if Xbox Accessories offers it for your controller),
@@ -64,11 +66,11 @@ The client's own default config for the Elite Series 2 (vendor 1118, product 767
 
 Drag a spell, item, macro, or supported action-bar action onto any paddle slot. Press P1-P4 to activate the corresponding action in the currently active controller layer.
 
-Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\PaddleSlots.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\PaddleSlots.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/paddles clear`.
+Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\Backhand.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\Backhand.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/paddles clear`.
 
 ## Slash commands
 
-- `/paddles` — open native PaddleSlots settings.
+- `/paddles` (or `/backhand`) — open native Backhand settings.
 - `/paddles unlock` — move panels outside WoW Edit Mode.
 - `/paddles lock` — lock panels outside WoW Edit Mode.
 - `/paddles reset` — reset all four panel positions to the nested crossbar layout.
@@ -101,6 +103,6 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 
 The most useful lines when validating a Forever build are **Modifier CVars**, **Mapped state**, **Visual panel**, and **Secure panel**.
 
-To attach the report to a bug report, open **View Diagnostics** in the Diagnostics section of the PaddleSlots settings (or run `/paddles diag copy`), click **Select All**, and press Ctrl+C. The text has no chat color codes, so it pastes cleanly into GitHub or Discord.
+To attach the report to a bug report, open **View Diagnostics** in the Diagnostics section of the Backhand settings (or run `/paddles diag copy`), click **Select All**, and press Ctrl+C. The text has no chat color codes, so it pastes cleanly into GitHub or Discord.
 
 The full version history is in [CHANGELOG.md](CHANGELOG.md).

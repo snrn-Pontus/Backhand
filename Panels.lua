@@ -35,7 +35,7 @@ local function SetPanelPosition(panelIndex)
         return
     end
 
-    local pos = PaddleSlotsDB.panelPositions[panelIndex] or DefaultPanelPosition(panelIndex)
+    local pos = BackhandDB.panelPositions[panelIndex] or DefaultPanelPosition(panelIndex)
     panel:ClearAllPoints()
     panel:SetPoint(ResolvePanelAnchor(pos))
 end
@@ -54,7 +54,7 @@ local function SavePanelPosition(panelIndex)
     -- Dragging re-anchors the panel to UIParent, so only a position that is
     -- still attached to the native crossbar keeps its frame reference.
     local relativeName = relativeTo and relativeTo ~= UIParent and type(relativeTo.GetName) == "function" and relativeTo:GetName() or nil
-    PaddleSlotsDB.panelPositions[panelIndex] = {
+    BackhandDB.panelPositions[panelIndex] = {
         point = point,
         relativeTo = relativeName == NATIVE_CROSSBAR_FRAME and relativeName or nil,
         relativePoint = relativePoint or point,
@@ -86,7 +86,7 @@ local function UpdatePanelVisibility()
         return
     end
 
-    local shown = PaddleSlotsDB.gamepadOnly == false or IsGamepadInterfaceActive() or IsEditable()
+    local shown = BackhandDB.gamepadOnly == false or IsGamepadInterfaceActive() or IsEditable()
     for panelIndex = 1, PANEL_COUNT do
         local panel = panelFrames[panelIndex]
         if panel then
@@ -197,21 +197,21 @@ local function SetPanelActiveVisual(panelIndex, isActive)
     end
 
     local scalingEnabled = GetNativeCVarBool(NATIVE_CVAR_SCALING, true)
-    local highlightEnabled = PaddleSlotsDB.highlightActivePanel ~= false and GetNativeCVarBool(NATIVE_CVAR_HIGHLIGHT, true)
+    local highlightEnabled = BackhandDB.highlightActivePanel ~= false and GetNativeCVarBool(NATIVE_CVAR_HIGHLIGHT, true)
     local expanded = isActive and scalingEnabled
     local wasExpanded = panel.expanded == true
 
     panel.isActive = isActive
     panel.expanded = expanded
 
-    local inactiveOpacity = PaddleSlotsDB.inactiveOpacity or 1.0
+    local inactiveOpacity = BackhandDB.inactiveOpacity or 1.0
     panel:SetAlpha(IsEditable() and 1 or (isActive and 1 or inactiveOpacity))
 
-    panel.focusBackground:SetAlpha(LAYOUT.FOCUS_BACKGROUND_ALPHA * (PaddleSlotsDB.highlightStrength or 1.0))
+    panel.focusBackground:SetAlpha(LAYOUT.FOCUS_BACKGROUND_ALPHA * (BackhandDB.highlightStrength or 1.0))
     panel.focusBackground:SetShown(isActive and highlightEnabled and panel.focusBackground.artAvailable)
 
     if panel.modifierIcon then
-        panel.modifierIcon:SetShown(PaddleSlotsDB.showPanelLabels ~= false)
+        panel.modifierIcon:SetShown(BackhandDB.showPanelLabels ~= false)
         SetModifierIconFocused(panel, isActive)
     end
 
@@ -271,7 +271,7 @@ end
 
 local function CreatePanelFrame(panelIndex)
     local panelInfo = PANELS[panelIndex]
-    local panel = CreateFrame("Frame", "PaddleSlotsPanel" .. panelIndex, UIParent)
+    local panel = CreateFrame("Frame", "BackhandPanel" .. panelIndex, UIParent)
     panel.panelIndex = panelIndex
     panel.expanded = false
     panel:SetSize(LAYOUT.PANEL_WIDTH, LAYOUT.PANEL_HEIGHT)
@@ -382,7 +382,7 @@ local function ApplyAppearance()
         return
     end
 
-    local scale = PaddleSlotsDB.hudScale or 1.0
+    local scale = BackhandDB.hudScale or 1.0
     for panelIndex = 1, PANEL_COUNT do
         local panel = panelFrames[panelIndex]
         if panel then
@@ -396,7 +396,7 @@ local function ApplyAppearance()
 end
 
 local function SetUnlocked(unlocked)
-    PaddleSlotsDB.unlocked = unlocked and true or false
+    BackhandDB.unlocked = unlocked and true or false
     if InCombatLockdown() then
         ns.pendingAppearanceRefresh = true
         Print("Layout lock changes will apply after combat.")
@@ -414,14 +414,14 @@ local function ResetPosition(panelIndex)
     end
 
     if panelIndex then
-        PaddleSlotsDB.panelPositions[panelIndex] = DefaultPanelPosition(panelIndex)
+        BackhandDB.panelPositions[panelIndex] = DefaultPanelPosition(panelIndex)
         SetPanelPosition(panelIndex)
         Print(PANELS[panelIndex].label .. " position reset.")
         return
     end
 
     for i = 1, PANEL_COUNT do
-        PaddleSlotsDB.panelPositions[i] = DefaultPanelPosition(i)
+        BackhandDB.panelPositions[i] = DefaultPanelPosition(i)
         SetPanelPosition(i)
     end
     Print("All paddle panel positions reset.")

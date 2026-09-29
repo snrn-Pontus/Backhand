@@ -167,8 +167,8 @@ local function ApplyLearnedPaddleMapping(watcher)
 
     local config = GetDeviceConfig(watcher.vendorID, watcher.productID) or {}
     config.configID = config.configID or { vendorID = watcher.vendorID, productID = watcher.productID }
-    config.name = config.name or ("PaddleSlots mapping for " .. tostring(watcher.deviceName))
-    config.comment = "Paddle buttons learned by PaddleSlots (/paddles learn)"
+    config.name = config.name or ("Backhand mapping for " .. tostring(watcher.deviceName))
+    config.comment = "Paddle buttons learned by Backhand (/paddles learn)"
     config.rawButtonMappings = config.rawButtonMappings or {}
     config.rawAxisMappings = config.rawAxisMappings or {}
     config.axisConfigs = config.axisConfigs or {}
@@ -194,7 +194,7 @@ local function ApplyLearnedPaddleMapping(watcher)
         mapping.button = "PADPADDLE" .. paddle
         mapping.axis = nil
         mapping.axisValue = nil
-        mapping.comment = "PaddleSlots paddle " .. paddle
+        mapping.comment = "Backhand paddle " .. paddle
     end
 
     local ok, err = pcall(C_GamePad.SetConfig, config)

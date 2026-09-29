@@ -78,7 +78,7 @@ local function SetPaddleKey(paddleIndex, key, deferApply)
         return false
     end
 
-    PaddleSlotsDB.paddleKeys["P" .. paddleIndex] = key
+    BackhandDB.paddleKeys["P" .. paddleIndex] = key
     if not deferApply then
         ApplyPaddleKeys(true)
     end
@@ -142,7 +142,7 @@ local function EnsureCaptureFrame()
         return captureFrame
     end
 
-    local frame = CreateFrame("Frame", "PaddleSlotsCaptureFrame", UIParent, "BackdropTemplate")
+    local frame = CreateFrame("Frame", "BackhandCaptureFrame", UIParent, "BackdropTemplate")
     frame:SetSize(480, 170)
     frame:SetPoint("CENTER", UIParent, "CENTER", 0, 140)
     frame:SetFrameStrata("TOOLTIP")
@@ -227,7 +227,7 @@ local function StartKeyCapture(paddleIndex, sequence)
 end
 
 local GUIDE_TEXT = table.concat({
-    "On Windows the Xbox Elite Series 2 does not report its paddles to games. WoW only sees whatever the Xbox Accessories app maps a paddle to. PaddleSlots never takes over a button the native gamepad UI uses (A/B/X/Y, D-pad, bumpers, triggers, stick clicks, View, Menu), so each paddle has to arrive as an input WoW does not use.",
+    "On Windows the Xbox Elite Series 2 does not report its paddles to games. WoW only sees whatever the Xbox Accessories app maps a paddle to. Backhand never takes over a button the native gamepad UI uses (A/B/X/Y, D-pad, bumpers, triggers, stick clicks, View, Menu), so each paddle has to arrive as an input WoW does not use.",
     "",
     "|cffffd100Option 1: Xbox Accessories app, keyboard key mapping|r",
     "1. Open Xbox Accessories, select the controller, and edit the profile whose slot is active (the slot LED shows which one).",
@@ -249,7 +249,7 @@ local function EnsureGuideFrame()
         return guideFrame
     end
 
-    local frame = CreateFrame("Frame", "PaddleSlotsGuideFrame", UIParent, "BackdropTemplate")
+    local frame = CreateFrame("Frame", "BackhandGuideFrame", UIParent, "BackdropTemplate")
     frame:SetSize(640, 700)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
@@ -270,7 +270,7 @@ local function EnsureGuideFrame()
 
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     frame.title:SetPoint("TOP", 0, -18)
-    frame.title:SetText("PaddleSlots setup guide")
+    frame.title:SetText("Backhand setup guide")
 
     frame.body = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     frame.body:SetPoint("TOPLEFT", 24, -48)
@@ -360,7 +360,7 @@ local function EnsureGuideFrame()
     end
 
     if type(UISpecialFrames) == "table" then
-        table.insert(UISpecialFrames, "PaddleSlotsGuideFrame")
+        table.insert(UISpecialFrames, "BackhandGuideFrame")
     end
 
     frame:Hide()

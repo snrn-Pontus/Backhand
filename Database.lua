@@ -74,50 +74,50 @@ local function ResolvePanelAnchor(pos)
 end
 
 local function EnsureDatabase()
-    PaddleSlotsDB = PaddleSlotsDB or {}
-    local previousVersion = tonumber(PaddleSlotsDB.version) or 0
+    BackhandDB = BackhandDB or {}
+    local previousVersion = tonumber(BackhandDB.version) or 0
     -- Every build since 0.7.1 writes a version. A profile that has data but no
     -- version is therefore older, so it still needs the 0.7.1 migration.
-    if PaddleSlotsDB.version == nil and next(PaddleSlotsDB) ~= nil then
+    if BackhandDB.version == nil and next(BackhandDB) ~= nil then
         previousVersion = 7
     end
-    PaddleSlotsDB.version = 8
-    PaddleSlotsDB.unlocked = PaddleSlotsDB.unlocked == true
+    BackhandDB.version = 8
+    BackhandDB.unlocked = BackhandDB.unlocked == true
 
-    if PaddleSlotsDB.hudScale == nil then
-        PaddleSlotsDB.hudScale = 1.0
+    if BackhandDB.hudScale == nil then
+        BackhandDB.hudScale = 1.0
     end
-    if PaddleSlotsDB.inactiveOpacity == nil then
-        PaddleSlotsDB.inactiveOpacity = 1.0
+    if BackhandDB.inactiveOpacity == nil then
+        BackhandDB.inactiveOpacity = 1.0
     end
-    if PaddleSlotsDB.highlightActivePanel == nil then
-        PaddleSlotsDB.highlightActivePanel = true
+    if BackhandDB.highlightActivePanel == nil then
+        BackhandDB.highlightActivePanel = true
     end
-    if PaddleSlotsDB.highlightStrength == nil then
-        PaddleSlotsDB.highlightStrength = 1.0
+    if BackhandDB.highlightStrength == nil then
+        BackhandDB.highlightStrength = 1.0
     end
-    if PaddleSlotsDB.showPaddleBadges == nil then
-        PaddleSlotsDB.showPaddleBadges = true
+    if BackhandDB.showPaddleBadges == nil then
+        BackhandDB.showPaddleBadges = true
     end
-    if PaddleSlotsDB.showPanelLabels == nil then
-        PaddleSlotsDB.showPanelLabels = false
+    if BackhandDB.showPanelLabels == nil then
+        BackhandDB.showPanelLabels = false
     end
-    if PaddleSlotsDB.gamepadOnly == nil then
-        PaddleSlotsDB.gamepadOnly = true
+    if BackhandDB.gamepadOnly == nil then
+        BackhandDB.gamepadOnly = true
     end
 
-    PaddleSlotsDB.paddleKeys = PaddleSlotsDB.paddleKeys or {}
+    BackhandDB.paddleKeys = BackhandDB.paddleKeys or {}
     for paddleIndex = 1, PADDLE_COUNT do
-        local key = PaddleSlotsDB.paddleKeys["P" .. paddleIndex]
+        local key = BackhandDB.paddleKeys["P" .. paddleIndex]
         if type(key) ~= "string" or key == "" then
-            PaddleSlotsDB.paddleKeys["P" .. paddleIndex] = "PADPADDLE" .. paddleIndex
+            BackhandDB.paddleKeys["P" .. paddleIndex] = "PADPADDLE" .. paddleIndex
         end
     end
 
     -- 0.7 adopts the native crossbar look, where unfocused bars are collapsed
     -- rather than dimmed. Existing profiles are moved to that default once.
     if previousVersion > 0 and previousVersion < 7 then
-        PaddleSlotsDB.inactiveOpacity = 1.0
+        BackhandDB.inactiveOpacity = 1.0
     end
 
     -- 0.7.1 nests the panels in the native crossbar, which already shows the
@@ -125,47 +125,47 @@ local function EnsureDatabase()
     -- those prompts become opt-in. Panels that still sit at the 0.6 / 0.7
     -- default spots move to the new layout; panels the user moved are kept.
     if previousVersion > 0 and previousVersion < 8 then
-        PaddleSlotsDB.showPanelLabels = false
-        PaddleSlotsDB.migrateLegacyPanelPositions = true
+        BackhandDB.showPanelLabels = false
+        BackhandDB.migrateLegacyPanelPositions = true
     end
 
-    PaddleSlotsDB.hudScale = math.max(0.65, math.min(1.50, tonumber(PaddleSlotsDB.hudScale) or 1.0))
-    PaddleSlotsDB.inactiveOpacity = math.max(0.10, math.min(1.0, tonumber(PaddleSlotsDB.inactiveOpacity) or 1.0))
-    PaddleSlotsDB.highlightStrength = math.max(0.0, math.min(1.0, tonumber(PaddleSlotsDB.highlightStrength) or 1.0))
-    PaddleSlotsDB.panelPositions = PaddleSlotsDB.panelPositions or {}
+    BackhandDB.hudScale = math.max(0.65, math.min(1.50, tonumber(BackhandDB.hudScale) or 1.0))
+    BackhandDB.inactiveOpacity = math.max(0.10, math.min(1.0, tonumber(BackhandDB.inactiveOpacity) or 1.0))
+    BackhandDB.highlightStrength = math.max(0.0, math.min(1.0, tonumber(BackhandDB.highlightStrength) or 1.0))
+    BackhandDB.panelPositions = BackhandDB.panelPositions or {}
 
     -- Up to 0.7.6 the actions and reserved native slots lived here, account-wide.
     -- They are now per character (see EnsureCharacterDatabase), but the account
     -- copies are kept so every character can migrate them on its first login.
-    PaddleSlotsDB.nativeSlots = PaddleSlotsDB.nativeSlots or {}
-    PaddleSlotsDB.fallbackActions = PaddleSlotsDB.fallbackActions or {}
+    BackhandDB.nativeSlots = BackhandDB.nativeSlots or {}
+    BackhandDB.fallbackActions = BackhandDB.fallbackActions or {}
     for panelIndex = 1, PANEL_COUNT do
-        PaddleSlotsDB.fallbackActions[panelIndex] = PaddleSlotsDB.fallbackActions[panelIndex] or {}
+        BackhandDB.fallbackActions[panelIndex] = BackhandDB.fallbackActions[panelIndex] or {}
     end
 
     -- Migrate the original four-slot layout into the BASE panel if present.
-    if PaddleSlotsDB.buttons and not PaddleSlotsDB.migratedLegacyButtons then
+    if BackhandDB.buttons and not BackhandDB.migratedLegacyButtons then
         for paddleIndex = 1, PADDLE_COUNT do
-            local old = PaddleSlotsDB.buttons[paddleIndex]
-            if old and old.action and not PaddleSlotsDB.fallbackActions[1][paddleIndex] then
-                PaddleSlotsDB.fallbackActions[1][paddleIndex] = old.action
+            local old = BackhandDB.buttons[paddleIndex]
+            if old and old.action and not BackhandDB.fallbackActions[1][paddleIndex] then
+                BackhandDB.fallbackActions[1][paddleIndex] = old.action
             end
         end
-        PaddleSlotsDB.migratedLegacyButtons = true
+        BackhandDB.migratedLegacyButtons = true
     end
 
     -- v0.5 stored one position for the complete strip. Preserve that placement
     -- while splitting the four panels into independently movable frames.
-    if not PaddleSlotsDB.migratedPanelPositions then
-        local oldPosition = PaddleSlotsDB.position
+    if not BackhandDB.migratedPanelPositions then
+        local oldPosition = BackhandDB.position
         if type(oldPosition) == "table" then
             local legacyWidth = 114
             local legacyGap = 14
             local totalWidth = (legacyWidth * PANEL_COUNT) + (legacyGap * (PANEL_COUNT - 1))
             local firstCenter = -(totalWidth / 2) + (legacyWidth / 2)
             for panelIndex = 1, PANEL_COUNT do
-                if not PaddleSlotsDB.panelPositions[panelIndex] then
-                    PaddleSlotsDB.panelPositions[panelIndex] = {
+                if not BackhandDB.panelPositions[panelIndex] then
+                    BackhandDB.panelPositions[panelIndex] = {
                         point = "BOTTOM",
                         relativePoint = "BOTTOM",
                         x = (tonumber(oldPosition.x) or 0) + firstCenter + ((panelIndex - 1) * (legacyWidth + legacyGap)),
@@ -174,14 +174,14 @@ local function EnsureDatabase()
                 end
             end
         end
-        PaddleSlotsDB.migratedPanelPositions = true
+        BackhandDB.migratedPanelPositions = true
     end
 
     for panelIndex = 1, PANEL_COUNT do
-        local pos = PaddleSlotsDB.panelPositions[panelIndex]
-        if type(pos) ~= "table" or (PaddleSlotsDB.migrateLegacyPanelPositions and IsLegacyDefaultPosition(pos, panelIndex)) then
+        local pos = BackhandDB.panelPositions[panelIndex]
+        if type(pos) ~= "table" or (BackhandDB.migrateLegacyPanelPositions and IsLegacyDefaultPosition(pos, panelIndex)) then
             pos = DefaultPanelPosition(panelIndex)
-            PaddleSlotsDB.panelPositions[panelIndex] = pos
+            BackhandDB.panelPositions[panelIndex] = pos
         end
         local default = DefaultPanelPosition(panelIndex)
         pos.point = pos.point or default.point
@@ -192,7 +192,7 @@ local function EnsureDatabase()
             pos.relativeTo = nil
         end
     end
-    PaddleSlotsDB.migrateLegacyPanelPositions = nil
+    BackhandDB.migrateLegacyPanelPositions = nil
 end
 
 local function CopyTable(source)
@@ -208,20 +208,20 @@ end
 
 -- Actions and reserved native slots are per character: a spell that one class
 -- knows is nothing another class can cast, and action slot contents differ per
--- character anyway. Before 0.7.7 both lived account-wide in PaddleSlotsDB, so a
+-- character anyway. Before 0.7.7 both lived account-wide in BackhandDB, so a
 -- character that has no per-character table yet takes a copy of those values
 -- once. That keeps whatever it saw before the update. Wrong-class spells that
 -- came along can be cleared with /paddles clear.
 local function EnsureCharacterDatabase()
-    PaddleSlotsCharDB = PaddleSlotsCharDB or {}
-    local db = PaddleSlotsCharDB
+    BackhandCharDB = BackhandCharDB or {}
+    local db = BackhandCharDB
 
     if db.version == nil then
-        if type(PaddleSlotsDB.fallbackActions) == "table" and type(db.fallbackActions) ~= "table" then
-            db.fallbackActions = CopyTable(PaddleSlotsDB.fallbackActions)
+        if type(BackhandDB.fallbackActions) == "table" and type(db.fallbackActions) ~= "table" then
+            db.fallbackActions = CopyTable(BackhandDB.fallbackActions)
         end
-        if type(PaddleSlotsDB.nativeSlots) == "table" and type(db.nativeSlots) ~= "table" then
-            db.nativeSlots = CopyTable(PaddleSlotsDB.nativeSlots)
+        if type(BackhandDB.nativeSlots) == "table" and type(db.nativeSlots) ~= "table" then
+            db.nativeSlots = CopyTable(BackhandDB.nativeSlots)
         end
         local copiedActions = false
         for _, panelActions in pairs(db.fallbackActions or {}) do

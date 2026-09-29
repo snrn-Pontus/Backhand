@@ -92,7 +92,7 @@ local function GetDiagnosticLines(separator)
     local lines = {
         "Storage mode: " .. (ns.nativeStorageEnabled and "native C_GamepadUI action slots" or "SavedVariables fallback"),
         "Storage detail: " .. ns.nativeStorageStatus,
-        "Storage scope: actions and reserved slots are per character" .. (PaddleSlotsCharDB.migratedFromAccount and " (copied from the account-wide profile of 0.7.6 or older)" or ""),
+        "Storage scope: actions and reserved slots are per character" .. (BackhandCharDB.migratedFromAccount and " (copied from the account-wide profile of 0.7.6 or older)" or ""),
         string.format("Gamepad storage: first=%s%sstance=%s%spet=%s", tostring(firstStorage), separator, tostring(stanceStorage), separator, tostring(petStorage)),
         "Panel driver: " .. ns.nativeHookStatus,
         string.format("LT binding: %s%sRT binding: %s", tostring(ltAction), separator, tostring(rtAction)),
@@ -103,7 +103,7 @@ local function GetDiagnosticLines(separator)
             tostring(GetPaddleKey(1)), tostring(GetPaddleKey(2)), tostring(GetPaddleKey(3)), tostring(GetPaddleKey(4))),
         "Interface style: " .. tostring(C_InputInterfaceStyle and type(C_InputInterfaceStyle.GetCurrentStyle) == "function" and SafeCall(C_InputInterfaceStyle.GetCurrentStyle) or "unknown")
             .. " (CVar InputDeviceInterfaceStyle=" .. tostring(GetGamepadEmulationCVar("InputDeviceInterfaceStyle")) .. ")",
-        "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(PaddleSlotsDB.gamepadOnly ~= false) .. ")",
+        "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(BackhandDB.gamepadOnly ~= false) .. ")",
         "Visual detection: " .. ns.visualDetectionMethod .. (ns.nativeModifierCallbackRegistered and " (+ native crossbar callback)" or ""),
         "Visual panel: " .. PANELS[visualPanelIndex].label,
         "Secure panel: " .. securePanelText,
@@ -190,7 +190,7 @@ local function BuildDiagnosticLines()
     end
 
     local lines = {
-        string.format("PaddleSlots %s diagnostics", tostring(version or "unknown")),
+        string.format("Backhand %s diagnostics", tostring(version or "unknown")),
         string.format("Client: %s (build %s, interface %s)", tostring(gameVersion), tostring(build), tostring(interfaceVersion)),
     }
     for _, line in ipairs(GetDiagnosticLines(" | ")) do
@@ -216,7 +216,7 @@ local function EnsureDiagnosticsFrame()
         return diagnosticsFrame
     end
 
-    local frame = CreateFrame("Frame", "PaddleSlotsDiagnosticsFrame", UIParent, "BackdropTemplate")
+    local frame = CreateFrame("Frame", "BackhandDiagnosticsFrame", UIParent, "BackdropTemplate")
     frame:SetSize(640, 460)
     frame:SetPoint("CENTER")
     frame:SetFrameStrata("DIALOG")
@@ -237,7 +237,7 @@ local function EnsureDiagnosticsFrame()
 
     frame.title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     frame.title:SetPoint("TOP", 0, -18)
-    frame.title:SetText("PaddleSlots diagnostics")
+    frame.title:SetText("Backhand diagnostics")
 
     frame.hint = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     frame.hint:SetPoint("TOPLEFT", 24, -44)
@@ -317,7 +317,7 @@ local function EnsureDiagnosticsFrame()
     end)
 
     if type(UISpecialFrames) == "table" then
-        table.insert(UISpecialFrames, "PaddleSlotsDiagnosticsFrame")
+        table.insert(UISpecialFrames, "BackhandDiagnosticsFrame")
     end
 
     frame:Hide()

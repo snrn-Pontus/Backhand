@@ -1,11 +1,12 @@
-# PaddleSlots
+# SNRN Backhand
 
 **Four extra action slots for your controller's rear paddles, built into WoW: Forever's native gamepad crossbar.**
 
-Forever's crossbar gives you the d-pad and the face buttons on four layers (no trigger, LT, RT, LT + RT). PaddleSlots adds a fifth group to each of those layers: a 2 x 2 grid for the P1 to P4 paddles of an Xbox Elite Series 2, the back buttons of a PlayStation DualSense Edge, or any other controller whose extra buttons can be mapped to keys on PC. That is 16 more actions, all reachable without taking your thumbs off the sticks.
+Forever's crossbar gives you the d-pad and the face buttons on four layers (no trigger, LT, RT, LT + RT). Backhand adds a fifth group to each of those layers: a 2 x 2 grid for the P1 to P4 paddles of an Xbox Elite Series 2, the back buttons of a PlayStation DualSense Edge, or any other controller whose extra buttons can be mapped to keys on PC. That is 16 more actions, all reachable without taking your thumbs off the sticks.
 
 ## What's new
 
+- **Renamed**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/paddles assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
 - **0.7.9**: Paddles now switch layers in combat. Before, they could stay on whichever layer was active when combat started.
 - **0.7.8**: **View Diagnostics** (or `/paddles diag copy`) opens the diagnostics as text you can copy into a bug report.
 - **0.7.7**: Paddle actions are saved per character, so an alt no longer sees your main's spells.
@@ -27,7 +28,7 @@ Full history on the Changelog tab of each file.
 
 ## Works with what your controller actually sends
 
-On Windows the Xbox Elite Series 2 does not report its paddles to games, and the DualSense Edge's back buttons arrive as copies of the face buttons. WoW only sees whatever the Xbox Accessories app, Steam Input or reWASD maps a paddle to. PaddleSlots handles that instead of pretending the paddles exist:
+On Windows the Xbox Elite Series 2 does not report its paddles to games, and the DualSense Edge's back buttons arrive as copies of the face buttons. WoW only sees whatever the Xbox Accessories app, Steam Input or reWASD maps a paddle to. Backhand handles that instead of pretending the paddles exist:
 
 - **Assign by pressing**: open the settings, click a paddle row, press the paddle. Whatever the controller sends is assigned.
 - It refuses inputs the native gamepad UI already uses (A, B, X, Y, d-pad, bumpers, triggers, stick clicks, View, Menu), so a paddle can never steal a button. If your profile mirrors a paddle to A, the prompt tells you and keeps waiting.
@@ -40,7 +41,7 @@ On Windows the Xbox Elite Series 2 does not report its paddles to games, and the
 ## Setup in three steps
 
 1. Map each paddle to a key WoW does not use. Xbox Elite with Xbox Accessories: paddle to F9, F10, F11, F12. Steam Input or reWASD (Xbox Elite, DualSense Edge, others): paddle to F13, F14, F15, F16.
-2. In game, open **Settings > AddOns > PaddleSlots** (or type `/paddles`) and click **Assign P1-P4**, then press each paddle in turn.
+2. In game, open **Settings > AddOns > Backhand** (or type `/paddles`) and click **Assign P1-P4**, then press each paddle in turn.
 3. Drag spells, items or macros onto the paddle slots. Hold LT, RT or both to fill the other layers.
 
 ## Moving the panels
@@ -75,7 +76,7 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 - Built for **World of Warcraft: Forever** only. It uses Forever's native crossbar and gamepad API and does nothing on other clients.
 - Actions are saved per character. They are stored in the client's spare gamepad action storage when a safe block is free, so they survive like any other action bar. Otherwise they are kept in the addon's saved variables.
 - Layers switch in combat too. The paddles follow whichever crossbar bar has focus, or use a secure modifier driver if LT and RT are set up as Shift, Ctrl or Alt. `/paddles diag` reports which mode is active.
-- Not affiliated with ConsolePort. PaddleSlots does not replace the gamepad UI, it extends the one Forever ships.
+- Not affiliated with ConsolePort. Backhand does not replace the gamepad UI, it extends the one Forever ships.
 
 ## Reporting problems
 

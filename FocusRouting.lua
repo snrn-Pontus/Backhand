@@ -58,7 +58,7 @@ local PRECLICK = [[
 -- paddle key is bound to one hidden router that chooses the panel itself.
 function focusRouting.CreateRouters()
     for paddleIndex = 1, PADDLE_COUNT do
-        local router = CreateFrame("Button", "PaddleSlotsRouter" .. paddleIndex, UIParent, "SecureActionButtonTemplate")
+        local router = CreateFrame("Button", "BackhandRouter" .. paddleIndex, UIParent, "SecureActionButtonTemplate")
         router.paddleIndex = paddleIndex
         router:SetSize(1, 1)
         router:SetAlpha(0)

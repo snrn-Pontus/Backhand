@@ -27,7 +27,7 @@ local function RegisterSettings()
 
     -- Hidden until the Settings window displays it, so OnShow always fires.
     local panel = CreateFrame("Frame")
-    panel.name = "PaddleSlots"
+    panel.name = "Backhand"
     panel:Hide()
 
     local scrollFrame = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
@@ -38,7 +38,7 @@ local function RegisterSettings()
     content:SetSize(560, 1)
     scrollFrame:SetScrollChild(content)
 
-    -- Each control registers a function that reloads it from PaddleSlotsDB.
+    -- Each control registers a function that reloads it from BackhandDB.
     local refreshers = {}
     local y = -6
     local sliderCount = 0
@@ -75,12 +75,12 @@ local function RegisterSettings()
         checkbox:SetPoint("TOPLEFT", 14, y)
         checkbox.Text:SetText(label)
         checkbox:SetScript("OnClick", function(self)
-            PaddleSlotsDB[key] = self:GetChecked() and true or false
-            onChange(PaddleSlotsDB[key])
+            BackhandDB[key] = self:GetChecked() and true or false
+            onChange(BackhandDB[key])
         end)
         AttachTooltip(checkbox, label, tooltip)
         table.insert(refreshers, function()
-            checkbox:SetChecked(PaddleSlotsDB[key] == true)
+            checkbox:SetChecked(BackhandDB[key] == true)
         end)
         y = y - 30
     end
@@ -89,7 +89,7 @@ local function RegisterSettings()
     local function AddSlider(key, label, minValue, maxValue, step, tooltip)
         sliderCount = sliderCount + 1
         y = y - 16
-        local slider = CreateFrame("Slider", "PaddleSlotsSettingsSlider" .. sliderCount, content, "OptionsSliderTemplate")
+        local slider = CreateFrame("Slider", "BackhandSettingsSlider" .. sliderCount, content, "OptionsSliderTemplate")
         slider:SetPoint("TOPLEFT", 22, y)
         slider:SetWidth(250)
         slider:SetMinMaxValues(minValue, maxValue)
@@ -110,14 +110,14 @@ local function RegisterSettings()
             value = math.floor(value / step + 0.5) * step
             UpdateLabel(value)
             -- Refreshing the page calls SetValue too; only real changes apply.
-            if math.abs((tonumber(PaddleSlotsDB[key]) or 0) - value) > 0.001 then
-                PaddleSlotsDB[key] = value
+            if math.abs((tonumber(BackhandDB[key]) or 0) - value) > 0.001 then
+                BackhandDB[key] = value
                 ApplyAppearance()
             end
         end)
         AttachTooltip(slider, label, tooltip)
         table.insert(refreshers, function()
-            local value = tonumber(PaddleSlotsDB[key]) or minValue
+            local value = tonumber(BackhandDB[key]) or minValue
             slider:SetValue(value)
             UpdateLabel(value)
         end)
@@ -150,7 +150,7 @@ local function RegisterSettings()
     AddCheckbox(
         "unlocked",
         "Unlock panels outside Edit Mode",
-        "Normally PaddleSlots unlocks automatically while WoW Edit Mode is open. Enable this to move the four panels independently without opening Edit Mode.",
+        "Normally Backhand unlocks automatically while WoW Edit Mode is open. Enable this to move the four panels independently without opening Edit Mode.",
         function(value)
             SetUnlocked(value)
         end
@@ -213,7 +213,7 @@ local function RegisterSettings()
         "hudScale",
         "HUD scale",
         0.65, 1.50, 0.05,
-        "Scales all four PaddleSlots panels. 1.00 matches the size of the native crossbar slots."
+        "Scales all four Backhand panels. 1.00 matches the size of the native crossbar slots."
     )
 
     AddSlider(

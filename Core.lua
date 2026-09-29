@@ -115,7 +115,7 @@ local NATIVE_RESERVED_KEYS = {
 }
 
 local addon = CreateFrame("Frame")
-local secureDriver = CreateFrame("Frame", "PaddleSlotsSecureDriver", UIParent, "SecureHandlerStateTemplate")
+local secureDriver = CreateFrame("Frame", "BackhandSecureDriver", UIParent, "SecureHandlerStateTemplate")
 local panelFrames = {}
 local buttons = {}
 -- Native crossbar focus routing, filled in by FocusRouting.lua.
@@ -144,7 +144,7 @@ ns.visualDetectionMethod = "not initialized"
 ns.inputWatcher = nil
 
 local function Print(message)
-    DEFAULT_CHAT_FRAME:AddMessage("|cffd5b15fPaddleSlots:|r " .. tostring(message))
+    DEFAULT_CHAT_FRAME:AddMessage("|cff7fd8ffBackhand|r: " .. tostring(message))
 end
 
 local function GetMedia(name)
@@ -267,12 +267,12 @@ local function GetNativeCVarBool(name, default)
 end
 
 local function IsEditable()
-    return (PaddleSlotsDB and PaddleSlotsDB.unlocked == true) or ns.editModeActive
+    return (BackhandDB and BackhandDB.unlocked == true) or ns.editModeActive
 end
 
 -- Returns the binding key a paddle listens for, or nil when unassigned.
 local function GetPaddleKey(paddleIndex)
-    local key = PaddleSlotsDB and PaddleSlotsDB.paddleKeys and PaddleSlotsDB.paddleKeys["P" .. paddleIndex]
+    local key = BackhandDB and BackhandDB.paddleKeys and BackhandDB.paddleKeys["P" .. paddleIndex]
     if type(key) ~= "string" then
         return nil
     end
@@ -336,9 +336,9 @@ local function IsPaddleKeyAllowed(key)
     end
 
     -- Look at the regular binding only; the addon's own override bindings
-    -- (CLICK PaddleSlotsButton...) must not block reassigning a paddle.
+    -- (CLICK BackhandButton...) must not block reassigning a paddle.
     local action = type(GetBindingAction) == "function" and GetBindingAction(key, false) or nil
-    if action and action:match("^CLICK PaddleSlots") then
+    if action and action:match("^CLICK Backhand") then
         action = nil
     end
     if action and action ~= "" then

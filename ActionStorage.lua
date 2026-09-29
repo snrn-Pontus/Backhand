@@ -58,7 +58,7 @@ local function DiscoverNativeStorageSlots()
 end
 
 local function SavedNativeSlotsAreUsable()
-    local saved = PaddleSlotsCharDB.nativeSlots
+    local saved = BackhandCharDB.nativeSlots
     if type(saved) ~= "table" or #saved ~= PANEL_COUNT * PADDLE_COUNT then
         return false
     end
@@ -76,7 +76,7 @@ end
 
 local function HasFallbackActions()
     for panelIndex = 1, PANEL_COUNT do
-        local panelActions = PaddleSlotsCharDB.fallbackActions and PaddleSlotsCharDB.fallbackActions[panelIndex]
+        local panelActions = BackhandCharDB.fallbackActions and BackhandCharDB.fallbackActions[panelIndex]
         if panelActions then
             for paddleIndex = 1, PADDLE_COUNT do
                 if panelActions[paddleIndex] then
@@ -94,7 +94,7 @@ local function InitializeNativeStorage()
     ns.nativeStorageStatus = "unavailable"
 
     if SavedNativeSlotsAreUsable() then
-        for i, slot in ipairs(PaddleSlotsCharDB.nativeSlots) do
+        for i, slot in ipairs(BackhandCharDB.nativeSlots) do
             ns.nativeStorageSlots[i] = slot
         end
         ns.nativeStorageEnabled = true
@@ -138,7 +138,7 @@ local function InitializeNativeStorage()
         return
     end
 
-    PaddleSlotsCharDB.nativeSlots = chosen
+    BackhandCharDB.nativeSlots = chosen
     for i, slot in ipairs(chosen) do
         ns.nativeStorageSlots[i] = slot
     end

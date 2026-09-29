@@ -152,7 +152,7 @@ local function ClearSlot(panelArg, paddleArg)
 end
 
 local function PrintHelp()
-    Print("Commands:")
+    Print("Commands (/backhand works the same as /paddles):")
     Print("/paddles unlock - move panels outside WoW Edit Mode")
     Print("/paddles lock - lock panels outside WoW Edit Mode")
     Print("/paddles reset [base|lt|rt|both] - reset all or one panel position")
@@ -169,9 +169,9 @@ local function PrintHelp()
     Print("/paddles learn force - allow rebinding raw buttons the client already uses (steals them from the native UI)")
 end
 
-SLASH_PADDLESLOTS1 = "/paddles"
-SLASH_PADDLESLOTS2 = "/pslots"
-SlashCmdList.PADDLESLOTS = function(message)
+SLASH_BACKHAND1 = "/backhand"
+SLASH_BACKHAND2 = "/paddles"
+SlashCmdList.BACKHAND = function(message)
     local args = {}
     for token in message:gmatch("%S+") do
         args[#args + 1] = token
@@ -183,12 +183,12 @@ SlashCmdList.PADDLESLOTS = function(message)
     elseif command == "unlock" then
         SetUnlocked(true)
         if Settings and type(Settings.SetValue) == "function" then
-            pcall(Settings.SetValue, "PADDLESLOTS_UNLOCKED", true)
+            pcall(Settings.SetValue, "BACKHAND_UNLOCKED", true)
         end
     elseif command == "lock" then
         SetUnlocked(false)
         if Settings and type(Settings.SetValue) == "function" then
-            pcall(Settings.SetValue, "PADDLESLOTS_UNLOCKED", false)
+            pcall(Settings.SetValue, "BACKHAND_UNLOCKED", false)
         end
     elseif command == "reset" then
         local panelIndex = args[2] and ParsePanelArgument(args[2]) or nil

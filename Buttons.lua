@@ -204,7 +204,7 @@ local function UpdateRangeIndicator(button, checksRange, inRange)
 end
 
 local function ShouldShowPrompts()
-    return PaddleSlotsDB.showPaddleBadges ~= false and GetNativeCVarBool(NATIVE_CVAR_PROMPTS, true)
+    return BackhandDB.showPaddleBadges ~= false and GetNativeCVarBool(NATIVE_CVAR_PROMPTS, true)
 end
 
 local function UpdatePromptVisibility(button)
@@ -357,7 +357,7 @@ local function SetFallbackAction(button, action)
         return
     end
 
-    PaddleSlotsCharDB.fallbackActions[button.panelIndex][button.paddleIndex] = action
+    BackhandCharDB.fallbackActions[button.panelIndex][button.paddleIndex] = action
     button.actionData = action
     ConfigureSecureAction(button)
     UpdateButtonVisual(button)
@@ -546,7 +546,7 @@ local function SetButtonPushed(button, pushed)
 end
 
 local function CreateActionButton(panelIndex, paddleIndex, panel)
-    local name = string.format("PaddleSlotsButton%d_%d", panelIndex, paddleIndex)
+    local name = string.format("BackhandButton%d_%d", panelIndex, paddleIndex)
     local button = CreateFrame("Button", name, panel, "SecureActionButtonTemplate")
     button.panelIndex = panelIndex
     button.paddleIndex = paddleIndex
@@ -668,7 +668,7 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     if ns.nativeStorageEnabled then
         button.actionSlot = GetNativeSlot(panelIndex, paddleIndex)
     else
-        button.actionData = PaddleSlotsCharDB.fallbackActions[panelIndex][paddleIndex]
+        button.actionData = BackhandCharDB.fallbackActions[panelIndex][paddleIndex]
     end
 
     buttons[panelIndex][paddleIndex] = button
@@ -698,7 +698,7 @@ end
 local function RefreshButtons()
     ForEachButton(function(button, panelIndex, paddleIndex)
         if not button.actionSlot then
-            button.actionData = PaddleSlotsCharDB.fallbackActions[panelIndex][paddleIndex]
+            button.actionData = BackhandCharDB.fallbackActions[panelIndex][paddleIndex]
         end
         ConfigureSecureAction(button)
         UpdateButtonVisual(button)
