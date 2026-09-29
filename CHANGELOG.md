@@ -1,5 +1,9 @@
 # PaddleSlots changelog
 
+## Unreleased
+
+- **Copyable diagnostics.** The **Print Diagnostics** button in the settings is replaced by **View Diagnostics** (also `/paddles diag copy`); `/paddles diag` still prints to chat. It opens the `/paddles diag` report as plain text in a window with **Refresh**, **Select All** and **Close**, so you can press Ctrl+C and paste the whole report into a bug report. The chat output and the window share the same code, so they always match. Both now start with the addon version and client build (#11).
+
 ## 0.7.7 — Actions saved per character
 
 - **Paddle actions and reserved native slots are now saved per character** (`SavedVariablesPerCharacter`). They used to be account-wide, so a second character of another class saw, and tried to cast, the first character's spells, and both characters fought over the same reserved action slots. Paddle keys, panel positions and appearance settings stay account-wide (#3).

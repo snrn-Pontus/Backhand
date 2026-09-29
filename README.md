@@ -78,6 +78,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 - `/paddles assign [1-4]` — assign one paddle (or all four in order) by pressing it.
 - `/paddles keys [P1 P2 P3 P4 | reset]` — show or set the paddle inputs, e.g. `/paddles keys F13 F14 F15 F16`.
 - `/paddles diag` — print gamepad integration diagnostics, including the paddle inputs and which raw buttons carry PADPADDLE1-4.
+- `/paddles diag copy` — open the same diagnostics as plain text you can select and copy.
 - `/paddles test` — for 30 seconds, print the raw controller button index of anything you press and what the client maps it to. Use it to confirm the paddles reach WoW at all.
 - `/paddles learn` — press P1, P2, P3, P4 in order. The addon writes a device config (vendor/product specific) through `C_GamePad.SetConfig` so those raw buttons become PADPADDLE1-4. The client stores it in `WTF/GamePadConfig_AddOns.json`. Learning refuses raw buttons the client already uses (A/B/X/Y, D-pad, ...), because a paddle arriving as one of those means the controller profile mirrors it, and rebinding it would take the button away from the native UI. `/paddles learn force` overrides that check. `/paddles learn cancel` aborts; `/paddles learn clear` deletes the addon's device config again (follow with `/reload`).
 - `/paddles help` — print command help.
@@ -86,6 +87,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 
 `/paddles diag` reports:
 
+- addon version and client build
 - native storage status and slots
 - storage scope (per character, and whether the actions were copied from an older account-wide profile)
 - LT / RT bindings
@@ -98,5 +100,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 - Edit Mode integration state
 
 The most useful lines when validating a Forever build are **Modifier CVars**, **Mapped state**, **Visual panel**, and **Secure panel**.
+
+To attach the report to a bug report, open **View Diagnostics** in the Diagnostics section of the PaddleSlots settings (or run `/paddles diag copy`), click **Select All**, and press Ctrl+C. The text has no chat color codes, so it pastes cleanly into GitHub or Discord.
 
 The full version history is in [CHANGELOG.md](CHANGELOG.md).
