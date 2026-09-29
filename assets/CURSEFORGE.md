@@ -78,6 +78,10 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 - Layers switch in combat too. The paddles follow whichever crossbar bar has focus, or use a secure modifier driver if LT and RT are set up as Shift, Ctrl or Alt. `/backhand diag` reports which mode is active.
 - Not affiliated with ConsolePort. Backhand does not replace the gamepad UI, it extends the one Forever ships.
 
+## Part of the SNRN family
+
+- **[SNRN Rummage](https://github.com/snrn-Pontus/Rummage)**: one action slot per item type that always uses the best food, drink, potion, bandage or quest item in your bags. Put its macros on your paddles and never swap consumables by hand again.
+
 ## Reporting problems
 
 Open **View Diagnostics** in the settings (or run `/backhand diag copy`), copy the report, and post it with a description of your controller and mapping software. If the game crashed, attach the error file from the `Errors` folder next to the game executable.
