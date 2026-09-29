@@ -1,6 +1,6 @@
 # PaddleSlots changelog
 
-## Unreleased
+## 0.7.9 — Paddle layers in combat
 
 - **Paddles switch layers in combat again.** On clients where LT and RT are not emulated Shift/Ctrl/Alt (the Forever default), PaddleSlots could only rebind the paddles outside combat, so they stayed on whichever layer was active when combat started. Each paddle now goes through a hidden secure button that checks, at the moment you press it, which native crossbar bar has focus, and fires that panel's action. `/paddles diag` reports this as "paddles follow the native crossbar focus".
 
