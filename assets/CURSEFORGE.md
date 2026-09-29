@@ -6,7 +6,7 @@ Forever's crossbar gives you the d-pad and the face buttons on four layers (no t
 
 ## What's new
 
-- **Renamed**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/backhand assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
+- **0.8.0**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/backhand assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
 - **0.7.9**: Paddles now switch layers in combat. Before, they could stay on whichever layer was active when combat started.
 - **0.7.8**: **View Diagnostics** (or `/backhand diag copy`) opens the diagnostics as text you can copy into a bug report.
 - **0.7.7**: Paddle actions are saved per character, so an alt no longer sees your main's spells.
