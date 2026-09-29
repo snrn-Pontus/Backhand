@@ -12,7 +12,7 @@ Forever's crossbar gives you the d-pad and the face buttons on four layers (no t
 
 Full history on the Changelog tab of each file.
 
-![Paddle panels nested in the native crossbar](SCREENSHOT_1_URL)
+![Paddle panels nested in the native crossbar](https://media.forgecdn.net/attachments/1967/958/ui-1-png.png)
 
 ## Looks and behaves like the native crossbar
 
@@ -23,7 +23,7 @@ Full history on the Changelog tab of each file.
 - Paddle actions fire on press, like every other gamepad button.
 - Out-of-range and unusable feedback with the same colours as the native slots.
 
-![Focused LT + RT panel](SCREENSHOT_2_URL)
+![Focused LT + RT panel](https://media.forgecdn.net/attachments/1967/961/ui2-png.png)
 
 ## Works with what your controller actually sends
 
@@ -35,7 +35,7 @@ On Windows the Xbox Elite Series 2 does not report its paddles to games, and the
 - An in-game **Setup guide** walks through both routes (Xbox Accessories keyboard mapping, or Steam Input / reWASD with F13 to F16) and shows a live "last input detected" line.
 - **DualSense Edge**: Steam Input or reWASD see its back buttons as separate inputs, so bind them to F13 to F16 there and use the Steam route. No PS5 is needed.
 
-![Settings page](SCREENSHOT_3_URL)
+![Settings page](https://media.forgecdn.net/attachments/1967/955/settings-png.png)
 
 ## Setup in three steps
 
