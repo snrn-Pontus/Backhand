@@ -11,4 +11,15 @@
 ## SavedVariables: PaddleSlotsDB
 ## SavedVariablesPerCharacter: PaddleSlotsCharDB
 
+Core.lua
+Database.lua
+ActionStorage.lua
+Buttons.lua
+FocusRouting.lua
+Layers.lua
+RawInput.lua
+Panels.lua
+PaddleKeys.lua
+Diagnostics.lua
+Settings.lua
 PaddleSlots.lua
