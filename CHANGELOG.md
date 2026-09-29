@@ -1,6 +1,6 @@
 # PaddleSlots changelog
 
-## Unreleased
+## 0.7.8 — Copyable diagnostics
 
 - **Copyable diagnostics.** The **Print Diagnostics** button in the settings is replaced by **View Diagnostics** (also `/paddles diag copy`); `/paddles diag` still prints to chat. It opens the `/paddles diag` report as plain text in a window with **Refresh**, **Select All** and **Close**, so you can press Ctrl+C and paste the whole report into a bug report. The chat output and the window share the same code, so they always match. Both now start with the addon version and client build (#11).
 
