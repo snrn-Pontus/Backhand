@@ -6,9 +6,9 @@ Forever's crossbar gives you the d-pad and the face buttons on four layers (no t
 
 ## What's new
 
-- **Renamed**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/paddles assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
+- **Renamed**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/backhand assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
 - **0.7.9**: Paddles now switch layers in combat. Before, they could stay on whichever layer was active when combat started.
-- **0.7.8**: **View Diagnostics** (or `/paddles diag copy`) opens the diagnostics as text you can copy into a bug report.
+- **0.7.8**: **View Diagnostics** (or `/backhand diag copy`) opens the diagnostics as text you can copy into a bug report.
 - **0.7.7**: Paddle actions are saved per character, so an alt no longer sees your main's spells.
 
 Full history on the Changelog tab of each file.
@@ -41,12 +41,12 @@ On Windows the Xbox Elite Series 2 does not report its paddles to games, and the
 ## Setup in three steps
 
 1. Map each paddle to a key WoW does not use. Xbox Elite with Xbox Accessories: paddle to F9, F10, F11, F12. Steam Input or reWASD (Xbox Elite, DualSense Edge, others): paddle to F13, F14, F15, F16.
-2. In game, open **Settings > AddOns > Backhand** (or type `/paddles`) and click **Assign P1-P4**, then press each paddle in turn.
+2. In game, open **Settings > AddOns > Backhand** (or type `/backhand`) and click **Assign P1-P4**, then press each paddle in turn.
 3. Drag spells, items or macros onto the paddle slots. Hold LT, RT or both to fill the other layers.
 
 ## Moving the panels
 
-Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlock panels outside Edit Mode** in the settings. `/paddles reset` puts them back into the crossbar.
+Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlock panels outside Edit Mode** in the settings. `/backhand reset` puts them back into the crossbar.
 
 ## Options
 
@@ -61,23 +61,23 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 ## Slash commands
 
 ```
-/paddles              open settings
-/paddles assign [1-4] assign one paddle, or all four in order
-/paddles keys F13 F14 F15 F16
-/paddles reset        reset panel positions
-/paddles guide        open the setup guide
-/paddles test         print raw controller input for 30 seconds
-/paddles diag         print gamepad integration diagnostics
-/paddles diag copy    open the diagnostics as copyable text
+/backhand              open settings
+/backhand assign [1-4] assign one paddle, or all four in order
+/backhand keys F13 F14 F15 F16
+/backhand reset        reset panel positions
+/backhand guide        open the setup guide
+/backhand test         print raw controller input for 30 seconds
+/backhand diag         print gamepad integration diagnostics
+/backhand diag copy    open the diagnostics as copyable text
 ```
 
 ## Notes
 
 - Built for **World of Warcraft: Forever** only. It uses Forever's native crossbar and gamepad API and does nothing on other clients.
 - Actions are saved per character. They are stored in the client's spare gamepad action storage when a safe block is free, so they survive like any other action bar. Otherwise they are kept in the addon's saved variables.
-- Layers switch in combat too. The paddles follow whichever crossbar bar has focus, or use a secure modifier driver if LT and RT are set up as Shift, Ctrl or Alt. `/paddles diag` reports which mode is active.
+- Layers switch in combat too. The paddles follow whichever crossbar bar has focus, or use a secure modifier driver if LT and RT are set up as Shift, Ctrl or Alt. `/backhand diag` reports which mode is active.
 - Not affiliated with ConsolePort. Backhand does not replace the gamepad UI, it extends the one Forever ships.
 
 ## Reporting problems
 
-Open **View Diagnostics** in the settings (or run `/paddles diag copy`), copy the report, and post it with a description of your controller and mapping software. If the game crashed, attach the error file from the `Errors` folder next to the game executable.
+Open **View Diagnostics** in the settings (or run `/backhand diag copy`), copy the report, and post it with a description of your controller and mapping software. If the game crashed, attach the error file from the `Errors` folder next to the game executable.

@@ -1,4 +1,4 @@
--- /paddles diag: the diagnostics report and its copyable viewer
+-- /backhand diag: the diagnostics report and its copyable viewer
 local ADDON_NAME, ns = ...
 
 local NATIVE_CVAR_SCALING = ns.NATIVE_CVAR_SCALING
@@ -179,7 +179,7 @@ local function StripMarkup(text)
     return text
 end
 
--- Shared by /paddles diag and the diagnostics viewer so both stay identical.
+-- Shared by /backhand diag and the diagnostics viewer so both stay identical.
 local function BuildDiagnosticLines()
     local version = C_AddOns and type(C_AddOns.GetAddOnMetadata) == "function"
         and SafeCall(C_AddOns.GetAddOnMetadata, ADDON_NAME, "Version")

@@ -211,7 +211,7 @@ end
 -- character anyway. Before 0.7.7 both lived account-wide in BackhandDB, so a
 -- character that has no per-character table yet takes a copy of those values
 -- once. That keeps whatever it saw before the update. Wrong-class spells that
--- came along can be cleared with /paddles clear.
+-- came along can be cleared with /backhand clear.
 local function EnsureCharacterDatabase()
     BackhandCharDB = BackhandCharDB or {}
     local db = BackhandCharDB

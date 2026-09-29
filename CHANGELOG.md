@@ -2,8 +2,8 @@
 
 ## Unreleased — Renamed to SNRN Backhand
 
-- **PaddleSlots is now SNRN Backhand**, part of the SNRN addon family. The addon folder is `Backhand`, and `/backhand` works next to `/paddles`.
-- **Settings and paddle actions start fresh.** WoW keeps saved variables per addon folder, so the new folder cannot read the old PaddleSlots data. After updating, assign the paddle keys again (`/paddles assign`) and drag your actions back onto the slots. Remove the old `PaddleSlots` folder from `Interface\AddOns` if the CurseForge app leaves it behind, otherwise both addons try to use the paddles.
+- **PaddleSlots is now SNRN Backhand**, part of the SNRN addon family. The addon folder is `Backhand`, and the slash command is `/backhand`. The old `/paddles` still works.
+- **Settings and paddle actions start fresh.** WoW keeps saved variables per addon folder, so the new folder cannot read the old PaddleSlots data. After updating, assign the paddle keys again (`/backhand assign`) and drag your actions back onto the slots. Remove the old `PaddleSlots` folder from `Interface\AddOns` if the CurseForge app leaves it behind, otherwise both addons try to use the paddles.
 - The code is split into several files. No behaviour changes.
 
 ## 0.7.9 — Paddle layers in combat

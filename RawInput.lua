@@ -1,4 +1,4 @@
--- Raw input watcher: /paddles test and /paddles learn
+-- Raw input watcher: /backhand test and /backhand learn
 local _, ns = ...
 
 local PADDLE_COUNT = ns.PADDLE_COUNT
@@ -161,14 +161,14 @@ local function ApplyLearnedPaddleMapping(watcher)
         return false
     end
     if InCombatLockdown() then
-        Print("Gamepad configs cannot be changed during combat. Run /paddles learn again after combat.")
+        Print("Gamepad configs cannot be changed during combat. Run /backhand learn again after combat.")
         return false
     end
 
     local config = GetDeviceConfig(watcher.vendorID, watcher.productID) or {}
     config.configID = config.configID or { vendorID = watcher.vendorID, productID = watcher.productID }
     config.name = config.name or ("Backhand mapping for " .. tostring(watcher.deviceName))
-    config.comment = "Paddle buttons learned by Backhand (/paddles learn)"
+    config.comment = "Paddle buttons learned by Backhand (/backhand learn)"
     config.rawButtonMappings = config.rawButtonMappings or {}
     config.rawAxisMappings = config.rawAxisMappings or {}
     config.axisConfigs = config.axisConfigs or {}
@@ -242,7 +242,7 @@ local function ClearLearnedPaddleMapping()
 end
 
 local function PrintLearnPrompt(step)
-    Print(string.format("Press paddle P%d now (%d seconds). Type /paddles learn cancel to stop.", step, INPUT_WATCH_LEARN_STEP_TIMEOUT))
+    Print(string.format("Press paddle P%d now (%d seconds). Type /backhand learn cancel to stop.", step, INPUT_WATCH_LEARN_STEP_TIMEOUT))
 end
 
 local function UpdateInputWatcher()
@@ -308,7 +308,7 @@ local function UpdateInputWatcher()
             "Raw button %d is the client's %s button, so the controller is sending this paddle as %s rather than as a paddle. Learning stopped; nothing was changed.",
             rawIndex, currentMapping, currentMapping
         ))
-        Print("Unassign the paddles in the Xbox Accessories app (or switch the profile slot off), reconnect over USB, then run /paddles test: the paddles should appear as their own raw buttons. Use /paddles learn force only if you really want to take this button away from the native UI.")
+        Print("Unassign the paddles in the Xbox Accessories app (or switch the profile slot off), reconnect over USB, then run /backhand test: the paddles should appear as their own raw buttons. Use /backhand learn force only if you really want to take this button away from the native UI.")
         ns.inputWatcher = nil
         return
     end
@@ -336,7 +336,7 @@ local function StartRawInputTest()
         return
     end
     if StartInputWatcher("test") then
-        Print(string.format("Press each paddle. Raw button presses are printed for %d seconds; type /paddles test again to stop early.", INPUT_WATCH_TEST_DURATION))
+        Print(string.format("Press each paddle. Raw button presses are printed for %d seconds; type /backhand test again to stop early.", INPUT_WATCH_TEST_DURATION))
     end
 end
 

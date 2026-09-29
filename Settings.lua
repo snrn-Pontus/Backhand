@@ -47,7 +47,7 @@ local function RegisterSettings()
     note:SetPoint("TOPLEFT", 6, y)
     note:SetWidth(540)
     note:SetJustifyH("LEFT")
-    note:SetText("With a controller, use the mouse on this page. The gamepad cursor cannot enter it without freezing Forever when Settings is closed. Paddle keys, lock/unlock and reset also work through /paddles.")
+    note:SetText("With a controller, use the mouse on this page. The gamepad cursor cannot enter it without freezing Forever when Settings is closed. Paddle keys, lock/unlock and reset also work through /backhand.")
     y = y - 34
 
     local function AttachTooltip(control, label, tooltip)
@@ -265,7 +265,7 @@ local function RegisterSettings()
         function()
             ShowDiagnosticsFrame()
         end,
-        "Shows native storage, LT/RT detection, and native art status as plain text you can select and copy (Ctrl+C) into a bug report. Same as /paddles diag copy; /paddles diag prints it to chat."
+        "Shows native storage, LT/RT detection, and native art status as plain text you can select and copy (Ctrl+C) into a bug report. Same as /backhand diag copy; /backhand diag prints it to chat."
     )
 
     content:SetHeight(-y + 10)

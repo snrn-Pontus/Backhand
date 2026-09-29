@@ -13,10 +13,10 @@ Built for **World of Warcraft: Forever** only (Interface 16001). It relies on Fo
 ## Quick start
 
 1. Map each paddle to a key WoW does not use. Xbox Elite with the Xbox Accessories app: paddle to F9, F10, F11, F12. Steam Input or reWASD (Xbox Elite, DualSense Edge, others): paddle to F13, F14, F15, F16.
-2. In game open **Settings > AddOns > Backhand** (or type `/paddles`), click **Assign P1-P4** and press each paddle in turn.
+2. In game open **Settings > AddOns > Backhand** (or type `/backhand`), click **Assign P1-P4** and press each paddle in turn.
 3. Drag spells, items or macros onto the paddle slots. Hold LT, RT or both to fill the other layers.
 
-Panels can be moved in WoW's normal Edit Mode, or with **Unlock panels outside Edit Mode** in the settings. `/paddles reset` puts them back into the crossbar.
+Panels can be moved in WoW's normal Edit Mode, or with **Unlock panels outside Edit Mode** in the settings. `/backhand reset` puts them back into the crossbar.
 
 ## Settings
 
@@ -26,7 +26,7 @@ Open:
 
 or use:
 
-`/paddles`
+`/backhand`
 
 Options include:
 
@@ -60,34 +60,34 @@ Two routes:
 
 **PlayStation DualSense Edge**: Sony has no PC app for the Edge, and without a profile the back buttons and Fn buttons just repeat face buttons (Steam shows them as Circle and Cross, so the addon refuses them). Steam Input and reWASD do see the back buttons as their own inputs: add WoW as a non-Steam game, enable PlayStation controller support in Steam's controller settings, bind the two back buttons (and, if you like, the two Fn buttons) to F13-F16, and use route 2 above. A PS5 is not needed for this; the Edge's own profiles only matter if you also want them on the console.
 
-The client's own default config for the Elite Series 2 (vendor 1118, product 767) maps raw buttons 16-19 to PADPADDLE1-4, but the controller never sends them on Windows. `/paddles test` shows raw presses; `/paddles learn` is only useful for controllers whose paddles arrive on other raw indices.
+The client's own default config for the Elite Series 2 (vendor 1118, product 767) maps raw buttons 16-19 to PADPADDLE1-4, but the controller never sends them on Windows. `/backhand test` shows raw presses; `/backhand learn` is only useful for controllers whose paddles arrive on other raw indices.
 
 ## Usage
 
 Drag a spell, item, macro, or supported action-bar action onto any paddle slot. Press P1-P4 to activate the corresponding action in the currently active controller layer.
 
-Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\Backhand.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\Backhand.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/paddles clear`.
+Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\Backhand.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\Backhand.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/backhand clear`.
 
 ## Slash commands
 
-- `/paddles` (or `/backhand`) — open native Backhand settings.
-- `/paddles unlock` — move panels outside WoW Edit Mode.
-- `/paddles lock` — lock panels outside WoW Edit Mode.
-- `/paddles reset` — reset all four panel positions to the nested crossbar layout.
-- `/paddles reset <base|lt|rt|both>` — reset one panel.
-- `/paddles clear <base|lt|rt|both> <1-4>` — clear one paddle action.
-- `/paddles guide` — open the setup guide window.
-- `/paddles assign [1-4]` — assign one paddle (or all four in order) by pressing it.
-- `/paddles keys [P1 P2 P3 P4 | reset]` — show or set the paddle inputs, e.g. `/paddles keys F13 F14 F15 F16`.
-- `/paddles diag` — print gamepad integration diagnostics, including the paddle inputs and which raw buttons carry PADPADDLE1-4.
-- `/paddles diag copy` — open the same diagnostics as plain text you can select and copy.
-- `/paddles test` — for 30 seconds, print the raw controller button index of anything you press and what the client maps it to. Use it to confirm the paddles reach WoW at all.
-- `/paddles learn` — press P1, P2, P3, P4 in order. The addon writes a device config (vendor/product specific) through `C_GamePad.SetConfig` so those raw buttons become PADPADDLE1-4. The client stores it in `WTF/GamePadConfig_AddOns.json`. Learning refuses raw buttons the client already uses (A/B/X/Y, D-pad, ...), because a paddle arriving as one of those means the controller profile mirrors it, and rebinding it would take the button away from the native UI. `/paddles learn force` overrides that check. `/paddles learn cancel` aborts; `/paddles learn clear` deletes the addon's device config again (follow with `/reload`).
-- `/paddles help` — print command help.
+- `/backhand` (or the old `/paddles`) — open native Backhand settings.
+- `/backhand unlock` — move panels outside WoW Edit Mode.
+- `/backhand lock` — lock panels outside WoW Edit Mode.
+- `/backhand reset` — reset all four panel positions to the nested crossbar layout.
+- `/backhand reset <base|lt|rt|both>` — reset one panel.
+- `/backhand clear <base|lt|rt|both> <1-4>` — clear one paddle action.
+- `/backhand guide` — open the setup guide window.
+- `/backhand assign [1-4]` — assign one paddle (or all four in order) by pressing it.
+- `/backhand keys [P1 P2 P3 P4 | reset]` — show or set the paddle inputs, e.g. `/backhand keys F13 F14 F15 F16`.
+- `/backhand diag` — print gamepad integration diagnostics, including the paddle inputs and which raw buttons carry PADPADDLE1-4.
+- `/backhand diag copy` — open the same diagnostics as plain text you can select and copy.
+- `/backhand test` — for 30 seconds, print the raw controller button index of anything you press and what the client maps it to. Use it to confirm the paddles reach WoW at all.
+- `/backhand learn` — press P1, P2, P3, P4 in order. The addon writes a device config (vendor/product specific) through `C_GamePad.SetConfig` so those raw buttons become PADPADDLE1-4. The client stores it in `WTF/GamePadConfig_AddOns.json`. Learning refuses raw buttons the client already uses (A/B/X/Y, D-pad, ...), because a paddle arriving as one of those means the controller profile mirrors it, and rebinding it would take the button away from the native UI. `/backhand learn force` overrides that check. `/backhand learn cancel` aborts; `/backhand learn clear` deletes the addon's device config again (follow with `/reload`).
+- `/backhand help` — print command help.
 
 ## Diagnostics
 
-`/paddles diag` reports:
+`/backhand diag` reports:
 
 - addon version and client build
 - native storage status and slots
@@ -103,6 +103,6 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 
 The most useful lines when validating a Forever build are **Modifier CVars**, **Mapped state**, **Visual panel**, and **Secure panel**.
 
-To attach the report to a bug report, open **View Diagnostics** in the Diagnostics section of the Backhand settings (or run `/paddles diag copy`), click **Select All**, and press Ctrl+C. The text has no chat color codes, so it pastes cleanly into GitHub or Discord.
+To attach the report to a bug report, open **View Diagnostics** in the Diagnostics section of the Backhand settings (or run `/backhand diag copy`), click **Select All**, and press Ctrl+C. The text has no chat color codes, so it pastes cleanly into GitHub or Discord.
 
 The full version history is in [CHANGELOG.md](CHANGELOG.md).

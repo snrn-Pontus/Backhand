@@ -143,7 +143,7 @@ local function ClearSlot(panelArg, paddleArg)
     local paddleIndex = tonumber(paddleArg)
     if not panelIndex or not paddleIndex or paddleIndex ~= math.floor(paddleIndex)
         or paddleIndex < 1 or paddleIndex > PADDLE_COUNT then
-        Print("Usage: /paddles clear <base|lt|rt|both> <1-4>")
+        Print("Usage: /backhand clear <base|lt|rt|both> <1-4>")
         return
     end
 
@@ -152,21 +152,21 @@ local function ClearSlot(panelArg, paddleArg)
 end
 
 local function PrintHelp()
-    Print("Commands (/backhand works the same as /paddles):")
-    Print("/paddles unlock - move panels outside WoW Edit Mode")
-    Print("/paddles lock - lock panels outside WoW Edit Mode")
-    Print("/paddles reset [base|lt|rt|both] - reset all or one panel position")
-    Print("/paddles clear <base|lt|rt|both> <1-4> - clear one paddle action")
-    Print("/paddles or /paddles options - open native settings")
-    Print("/paddles diag - show native gamepad integration diagnostics")
-    Print("/paddles diag copy - open the diagnostics as copyable text")
-    Print("/paddles guide - open the setup guide (Xbox Accessories / Steam Input steps, live input readout)")
-    Print("/paddles assign [1-4] - assign one paddle, or all four in order, by pressing it")
-    Print("/paddles keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /paddles keys F13 F14 F15 F16")
-    Print("/paddles test - print which raw controller buttons fire when you press the paddles")
-    Print("/paddles learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
-    Print("/paddles learn clear - remove the addon's device config again")
-    Print("/paddles learn force - allow rebinding raw buttons the client already uses (steals them from the native UI)")
+    Print("Commands (the old /paddles works the same as /backhand):")
+    Print("/backhand unlock - move panels outside WoW Edit Mode")
+    Print("/backhand lock - lock panels outside WoW Edit Mode")
+    Print("/backhand reset [base|lt|rt|both] - reset all or one panel position")
+    Print("/backhand clear <base|lt|rt|both> <1-4> - clear one paddle action")
+    Print("/backhand or /backhand options - open native settings")
+    Print("/backhand diag - show native gamepad integration diagnostics")
+    Print("/backhand diag copy - open the diagnostics as copyable text")
+    Print("/backhand guide - open the setup guide (Xbox Accessories / Steam Input steps, live input readout)")
+    Print("/backhand assign [1-4] - assign one paddle, or all four in order, by pressing it")
+    Print("/backhand keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /backhand keys F13 F14 F15 F16")
+    Print("/backhand test - print which raw controller buttons fire when you press the paddles")
+    Print("/backhand learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
+    Print("/backhand learn clear - remove the addon's device config again")
+    Print("/backhand learn force - allow rebinding raw buttons the client already uses (steals them from the native UI)")
 end
 
 SLASH_BACKHAND1 = "/backhand"
@@ -193,7 +193,7 @@ SlashCmdList.BACKHAND = function(message)
     elseif command == "reset" then
         local panelIndex = args[2] and ParsePanelArgument(args[2]) or nil
         if args[2] and not panelIndex then
-            Print("Usage: /paddles reset [base|lt|rt|both]")
+            Print("Usage: /backhand reset [base|lt|rt|both]")
         else
             ResetPosition(panelIndex)
         end
@@ -287,7 +287,7 @@ local function CheckStanceOverlap()
         if slot >= first and slot <= last then
             stanceOverlapWarned[first] = true
             Print(string.format(
-                "Warning: this stance bar uses action slots %d-%d, which include paddle slot %d. Actions placed on either may replace each other. Please report this with /paddles diag output.",
+                "Warning: this stance bar uses action slots %d-%d, which include paddle slot %d. Actions placed on either may replace each other. Please report this with /backhand diag output.",
                 first, last, slot
             ))
             return
