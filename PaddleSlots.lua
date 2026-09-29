@@ -149,6 +149,9 @@ local lastBoundPanel = 1
 local ltModifier
 local rtModifier
 local securePanelDriverRegistered = false
+-- Native crossbar focus routing (see focusRouting.CreateRouters). Kept in one table
+-- because the main chunk is close to Lua's 200-local limit.
+local focusRouting = { enabled = false, routers = {} }
 local settingsCategory
 local settingsRegistered = false
 local pendingAppearanceRefresh = false
@@ -1109,6 +1112,22 @@ local function ApplyFallbackSecureAction(button)
     end
 end
 
+-- The paddle's router (see focusRouting.CreateRouters) performs the action itself, so
+-- it keeps a copy of every panel's attributes under the button name "panelN".
+-- The "*" prefix makes them match with any modifier key held.
+focusRouting.ROUTED_ATTRIBUTES = { "type", "action", "spell", "item", "macrotext" }
+
+function focusRouting.SyncAttributes(button)
+    local router = focusRouting.routers[button.paddleIndex]
+    if not router then
+        return
+    end
+    local suffix = "-panel" .. button.panelIndex
+    for _, name in ipairs(focusRouting.ROUTED_ATTRIBUTES) do
+        router:SetAttribute("*" .. name .. suffix, button:GetAttribute(name))
+    end
+end
+
 local function ConfigureSecureAction(button)
     if InCombatLockdown() then
         pendingSecureRefresh = true
@@ -1121,6 +1140,7 @@ local function ConfigureSecureAction(button)
     else
         ApplyFallbackSecureAction(button)
     end
+    focusRouting.SyncAttributes(button)
 end
 
 local function ConvertCursorToFallbackAction()
@@ -1736,7 +1756,130 @@ local function CreatePanelFrame(panelIndex)
     return panel
 end
 
+-- Picks the panel from the native crossbar focus at the moment a paddle is
+-- pressed. The crossbar raises its focused bar one frame level above the
+-- others (Blizzard_GamepadActionBars ShowHighlight/HideHighlight), and that
+-- level is readable from restricted code in combat. Refs 1-4 are the top,
+-- left, right and bottom bars, matching panels 1-4. No single highest bar
+-- (not set up yet, or a stance/possess bar holds the focus) means panel 1.
+focusRouting.PRECLICK = [[
+    local panel, best, tied = 1, nil, false
+    for i = 1, 4 do
+        local ref = self:GetFrameRef("nativeBar" .. i)
+        if not ref then
+            tied = true
+            break
+        end
+        local level = ref:GetFrameLevel()
+        if not best or level > best then
+            panel, best, tied = i, level, false
+        elseif level == best then
+            tied = true
+        end
+    end
+    if tied then
+        panel = 1
+    end
+    self:SetAttribute("routedPanel", panel)
+    return "panel" .. panel
+]]
+
+-- When LT and RT are not emulated Shift/Ctrl/Alt, no macro condition can see
+-- them, so the layer driver cannot switch bindings in combat. Instead each
+-- paddle key is bound to one hidden router that chooses the panel itself.
+function focusRouting.CreateRouters()
+    for paddleIndex = 1, PADDLE_COUNT do
+        local router = CreateFrame("Button", "PaddleSlotsRouter" .. paddleIndex, UIParent, "SecureActionButtonTemplate")
+        router.paddleIndex = paddleIndex
+        router:SetSize(1, 1)
+        router:SetAlpha(0)
+        router:EnableMouse(false)
+        router:RegisterForClicks("AnyUp", "AnyDown")
+        router:SetAttribute("useOnKeyDown", true)
+        secureDriver:WrapScript(router, "OnClick", focusRouting.PRECLICK)
+        -- Mirror the pressed look onto the panel button that fired.
+        router:SetScript("PostClick", function(self, _, down)
+            if self.pushedButton then
+                SetButtonPushed(self.pushedButton, false)
+                self.pushedButton = nil
+            end
+            if down then
+                local panel = tonumber(self:GetAttribute("routedPanel")) or 1
+                local button = buttons[panel] and buttons[panel][self.paddleIndex]
+                if button then
+                    SetButtonPushed(button, true)
+                    self.pushedButton = button
+                end
+            end
+        end)
+        focusRouting.routers[paddleIndex] = router
+    end
+end
+
+-- The top, left, right and bottom crossbar bars, or nil when the native
+-- crossbar is missing. Restricted code may only read protected frames in
+-- combat; the bars are protected through their secure action buttons, but
+-- fall back to a button in case the client does not propagate that.
+focusRouting.NATIVE_BAR_ANCHORS = { "TopCenteredAnchor", "LeftCenteredAnchor", "RightCenteredAnchor", "BottomCenteredAnchor" }
+
+function focusRouting.FindNativeBars()
+    local pageUnit = _G.GamepadMainActionBarFramePageUnit
+        or (_G.GamepadMainActionBarFrame and _G.GamepadMainActionBarFrame.PageUnit)
+    if not pageUnit then
+        return nil
+    end
+
+    local frames = {}
+    for i, anchorKey in ipairs(focusRouting.NATIVE_BAR_ANCHORS) do
+        local bar = pageUnit[anchorKey] and pageUnit[anchorKey].Bar
+        if not bar then
+            return nil
+        end
+        local frame = bar
+        if not SafeCall(bar.IsProtected, bar) then
+            frame = bar.Left and bar.Left.ActionButton1
+            if not frame or not SafeCall(frame.IsProtected, frame) then
+                return nil
+            end
+        end
+        frames[i] = frame
+    end
+    return frames
+end
+
+-- The panel the routers would pick right now (same rule as focusRouting.PRECLICK).
+function focusRouting.GetPanel()
+    local frames = focusRouting.FindNativeBars()
+    if not frames then
+        return nil
+    end
+    local panel, best, tied = 1, nil, false
+    for i, frame in ipairs(frames) do
+        local level = frame:GetFrameLevel()
+        if not best or level > best then
+            panel, best, tied = i, level, false
+        elseif level == best then
+            tied = true
+        end
+    end
+    return tied and 1 or panel
+end
+
+function focusRouting.Setup()
+    local frames = focusRouting.FindNativeBars()
+    if not frames or not focusRouting.routers[1] or type(SecureHandlerSetFrameRef) ~= "function" then
+        return false
+    end
+    for _, router in ipairs(focusRouting.routers) do
+        for i, frame in ipairs(frames) do
+            SecureHandlerSetFrameRef(router, "nativeBar" .. i, frame)
+        end
+    end
+    return true
+end
+
 local function CreateUI()
+    focusRouting.CreateRouters()
     for panelIndex = 1, PANEL_COUNT do
         buttons[panelIndex] = {}
         CreatePanelFrame(panelIndex)
@@ -1830,7 +1973,7 @@ local function BindPaddlesToPanel(panelIndex)
 
     ClearOverrideBindings(secureDriver)
     for paddleIndex = 1, PADDLE_COUNT do
-        local button = buttons[panelIndex][paddleIndex]
+        local button = focusRouting.enabled and focusRouting.routers[paddleIndex] or buttons[panelIndex][paddleIndex]
         for _, key in ipairs(GetPaddleBindingKeys(paddleIndex)) do
             SetOverrideBindingClick(secureDriver, true, key, button:GetName(), "LeftButton")
         end
@@ -1925,32 +2068,42 @@ local function SetupSecurePanelDriver()
     ltModifier = FindEmulatedModifier("PADLTRIGGER")
     rtModifier = FindEmulatedModifier("PADRTRIGGER")
 
+    local failure
     if not ltModifier or not rtModifier or ltModifier == rtModifier then
-        nativeHookStatus = string.format(
-            "native modifier mapping incomplete (LT=%s, RT=%s); using mapped-state fallback out of combat",
+        failure = string.format(
+            "native modifier mapping incomplete (LT=%s, RT=%s)",
             tostring(ltModifier),
             tostring(rtModifier)
         )
+    else
+        WriteSecureKeyAttributes()
+        secureDriver:SetAttribute("_onstate-paddlepanel", SECURE_STATE_BINDINGS)
+
+        local driver = string.format(
+            "[mod:%s,mod:%s] 4; [mod:%s] 2; [mod:%s] 3; 1",
+            ltModifier,
+            rtModifier,
+            ltModifier,
+            rtModifier
+        )
+
+        if not pcall(RegisterStateDriver, secureDriver, "paddlepanel", driver) then
+            failure = "found LT/RT modifier mappings but failed to register secure state driver"
+        end
+    end
+
+    if failure then
+        -- Without a secure modifier signal, follow the native crossbar focus
+        -- so the paddles still switch layers in combat.
+        focusRouting.enabled = focusRouting.Setup()
+        nativeHookStatus = failure .. (focusRouting.enabled
+            and "; paddles follow the native crossbar focus"
+            or "; using mapped-state fallback out of combat")
+        BindPaddlesToPanel(lastBoundPanel)
         return false
     end
 
-    WriteSecureKeyAttributes()
-    secureDriver:SetAttribute("_onstate-paddlepanel", SECURE_STATE_BINDINGS)
-
-    local driver = string.format(
-        "[mod:%s,mod:%s] 4; [mod:%s] 2; [mod:%s] 3; 1",
-        ltModifier,
-        rtModifier,
-        ltModifier,
-        rtModifier
-    )
-
-    local ok = pcall(RegisterStateDriver, secureDriver, "paddlepanel", driver)
-    if not ok then
-        nativeHookStatus = "found LT/RT modifier mappings but failed to register secure state driver"
-        return false
-    end
-
+    focusRouting.enabled = false
     securePanelDriverRegistered = true
     nativeHookStatus = string.format(
         "secure native modifier driver (LT=%s, RT=%s)",
@@ -2876,7 +3029,7 @@ local function StartStatePoller()
 
         -- If Forever is not exposing LT/RT as emulated secure modifiers, we
         -- can still follow the real controller state outside combat.
-        if not securePanelDriverRegistered and not InCombatLockdown() and panelIndex ~= lastBoundPanel then
+        if not securePanelDriverRegistered and not focusRouting.enabled and not InCombatLockdown() and panelIndex ~= lastBoundPanel then
             BindPaddlesToPanel(panelIndex)
         end
     end)
@@ -3035,6 +3188,11 @@ local function GetDiagnosticLines(separator)
     local rtAction = GetBindingAction("PADRTRIGGER", true)
     local securePanelIndex = tonumber(secureDriver:GetAttribute("activePanel")) or 1
     local visualPanelIndex = GetVisualPanelFromGamepadState()
+    local securePanelText = PANELS[securePanelIndex].label
+    if focusRouting.enabled then
+        local focusPanel = focusRouting.GetPanel()
+        securePanelText = (focusPanel and PANELS[focusPanel].label or "native crossbar missing") .. " (from native crossbar focus)"
+    end
 
     local lines = {
         "Storage mode: " .. (nativeStorageEnabled and "native C_GamepadUI action slots" or "SavedVariables fallback"),
@@ -3053,7 +3211,7 @@ local function GetDiagnosticLines(separator)
         "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(PaddleSlotsDB.gamepadOnly ~= false) .. ")",
         "Visual detection: " .. visualDetectionMethod .. (nativeModifierCallbackRegistered and " (+ native crossbar callback)" or ""),
         "Visual panel: " .. PANELS[visualPanelIndex].label,
-        "Secure panel: " .. PANELS[securePanelIndex].label,
+        "Secure panel: " .. securePanelText,
         "Native style CVars: " .. GetNativeStyleDiagnostic(),
         "Native art: " .. GetNativeArtDiagnostic(),
         "Edit Mode: " .. (editModeActive and "active" or "inactive") .. (editModeCallbacksRegistered and " (listening for EditMode.Enter/Exit)" or " (integration unavailable)"),

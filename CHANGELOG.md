@@ -1,5 +1,9 @@
 # PaddleSlots changelog
 
+## Unreleased
+
+- **Paddles switch layers in combat again.** On clients where LT and RT are not emulated Shift/Ctrl/Alt (the Forever default), PaddleSlots could only rebind the paddles outside combat, so they stayed on whichever layer was active when combat started. Each paddle now goes through a hidden secure button that checks, at the moment you press it, which native crossbar bar has focus, and fires that panel's action. `/paddles diag` reports this as "paddles follow the native crossbar focus".
+
 ## 0.7.8 — Copyable diagnostics
 
 - **Copyable diagnostics.** The **Print Diagnostics** button in the settings is replaced by **View Diagnostics** (also `/paddles diag copy`); `/paddles diag` still prints to chat. It opens the `/paddles diag` report as plain text in a window with **Refresh**, **Select All** and **Close**, so you can press Ctrl+C and paste the whole report into a bug report. The chat output and the window share the same code, so they always match. Both now start with the addon version and client build (#11).
