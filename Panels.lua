@@ -28,6 +28,20 @@ local CreateActionButton = ns.CreateActionButton
 local GetVisualPanelFromGamepadState = ns.GetVisualPanelFromGamepadState
 
 local lastVisualPanel
+local lastCrossbarFocused
+
+-- Mirrors GamepadMainActionBarFrameMixin:UpdateActionBarFocusedState: the
+-- native crossbar collapses every bar while a binding set other than the core
+-- gameplay one (game menu, bags, settings) owns the controller. Polled rather
+-- than registered through BindToCoreBindingActive so no addon code runs inside
+-- Blizzard's listener loop. Unknown counts as focused, as before.
+local function IsNativeCrossbarFocused()
+    local manager = GamepadSharedUtility and GamepadSharedUtility.InputBindingManager
+    if type(manager) ~= "table" or type(manager.IsOnlyCoreBindingSetActive) ~= "function" then
+        return true
+    end
+    return SafeCall(manager.IsOnlyCoreBindingSetActive, manager) ~= false
+end
 
 local function SetPanelPosition(panelIndex)
     local panel = panelFrames[panelIndex]
@@ -190,7 +204,9 @@ local function CreateModifierIcon(panel, panelInfo)
     return frame
 end
 
-local function SetPanelActiveVisual(panelIndex, isActive)
+-- isActive: the panel's layer is selected by the triggers. isFocused: it is
+-- selected and the native crossbar has gamepad focus, so it draws expanded.
+local function SetPanelActiveVisual(panelIndex, isActive, crossbarFocused)
     local panel = panelFrames[panelIndex]
     if not panel then
         return
@@ -198,21 +214,24 @@ local function SetPanelActiveVisual(panelIndex, isActive)
 
     local scalingEnabled = GetNativeCVarBool(NATIVE_CVAR_SCALING, true)
     local highlightEnabled = BackhandDB.highlightActivePanel ~= false and GetNativeCVarBool(NATIVE_CVAR_HIGHLIGHT, true)
-    local expanded = isActive and scalingEnabled
+    local isFocused = isActive and crossbarFocused
+    local expanded = isFocused and scalingEnabled
     local wasExpanded = panel.expanded == true
 
     panel.isActive = isActive
+    panel.isFocused = isFocused
     panel.expanded = expanded
 
     local inactiveOpacity = BackhandDB.inactiveOpacity or 1.0
     panel:SetAlpha(IsEditable() and 1 or (isActive and 1 or inactiveOpacity))
 
     panel.focusBackground:SetAlpha(LAYOUT.FOCUS_BACKGROUND_ALPHA * (BackhandDB.highlightStrength or 1.0))
-    panel.focusBackground:SetShown(isActive and highlightEnabled and panel.focusBackground.artAvailable)
+    panel.focusBackground:SetShown(isFocused and highlightEnabled and panel.focusBackground.artAvailable)
 
     if panel.modifierIcon then
-        panel.modifierIcon:SetShown(BackhandDB.showPanelLabels ~= false)
-        SetModifierIconFocused(panel, isActive)
+        -- The native crossbar hides its LT / RT prompts while a menu has focus.
+        panel.modifierIcon:SetShown(BackhandDB.showPanelLabels ~= false and (crossbarFocused or IsEditable()))
+        SetModifierIconFocused(panel, isFocused)
     end
 
     if expanded and not wasExpanded then
@@ -259,13 +278,15 @@ local function UpdateFocusFades()
 end
 
 local function UpdatePanelVisualState(panelIndex, force)
-    if not force and lastVisualPanel == panelIndex then
+    local crossbarFocused = IsNativeCrossbarFocused()
+    if not force and lastVisualPanel == panelIndex and lastCrossbarFocused == crossbarFocused then
         return
     end
 
     lastVisualPanel = panelIndex
+    lastCrossbarFocused = crossbarFocused
     for i = 1, PANEL_COUNT do
-        SetPanelActiveVisual(i, i == panelIndex)
+        SetPanelActiveVisual(i, i == panelIndex, crossbarFocused)
     end
 end
 
@@ -465,6 +486,7 @@ ns.UpdatePanelVisibility = UpdatePanelVisibility
 ns.UpdateEditOverlays = UpdateEditOverlays
 ns.UpdateFocusFades = UpdateFocusFades
 ns.UpdatePanelVisualState = UpdatePanelVisualState
+ns.IsNativeCrossbarFocused = IsNativeCrossbarFocused
 ns.CreateUI = CreateUI
 ns.ApplyAppearance = ApplyAppearance
 ns.SetUnlocked = SetUnlocked
