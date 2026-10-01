@@ -1,6 +1,6 @@
 # Backhand changelog
 
-## Unreleased
+## 0.8.1 — Panels collapse in menus
 
 - **Panels collapse when a menu has gamepad focus**, like the native crossbar. Opening the game menu, bags, settings or any other controller-navigable window used to leave the selected paddle panel expanded. Backhand now follows the same check the crossbar uses (only the core gameplay bindings are active), so the panel collapses, its focus background, button prompts and LT / RT prompt hide, and it expands again when focus returns. The selected layer and the paddle bindings do not change. `/backhand diag` shows "Native crossbar focused" and "Visual expanded" (#5).
 
