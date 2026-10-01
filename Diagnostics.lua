@@ -20,6 +20,7 @@ local GetMappedButtonArrayIndex = ns.GetMappedButtonArrayIndex
 local GetMappedState = ns.GetMappedState
 local GetPaddleRawMappingDiagnostic = ns.GetPaddleRawMappingDiagnostic
 local GetVisualPanelFromGamepadState = ns.GetVisualPanelFromGamepadState
+local IsNativeCrossbarFocused = ns.IsNativeCrossbarFocused
 
 local function GetMappedDiagnosticValues()
     local state = GetMappedState()
@@ -106,6 +107,8 @@ local function GetDiagnosticLines(separator)
         "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(BackhandDB.gamepadOnly ~= false) .. ")",
         "Visual detection: " .. ns.visualDetectionMethod .. (ns.nativeModifierCallbackRegistered and " (+ native crossbar callback)" or ""),
         "Visual panel: " .. PANELS[visualPanelIndex].label,
+        "Native crossbar focused: " .. (IsNativeCrossbarFocused() and "yes" or "no (a menu has gamepad focus)"),
+        "Visual expanded: " .. (panelFrames[visualPanelIndex] and panelFrames[visualPanelIndex].expanded and "yes" or "no"),
         "Secure panel: " .. securePanelText,
         "Native style CVars: " .. GetNativeStyleDiagnostic(),
         "Native art: " .. GetNativeArtDiagnostic(),

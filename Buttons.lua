@@ -209,7 +209,7 @@ end
 
 local function UpdatePromptVisibility(button)
     local panel = panelFrames[button.panelIndex]
-    local shown = panel ~= nil and panel.isActive == true and button.hasAction == true and ShouldShowPrompts()
+    local shown = panel ~= nil and panel.isFocused == true and button.hasAction == true and ShouldShowPrompts()
     button.visual.prompt:SetShown(shown and button.visual.prompt.artAvailable)
 end
 
