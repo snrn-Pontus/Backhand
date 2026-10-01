@@ -105,6 +105,9 @@ local function EnsureDatabase()
     if BackhandDB.gamepadOnly == nil then
         BackhandDB.gamepadOnly = true
     end
+    if type(BackhandDB.controllerProfile) ~= "string" then
+        BackhandDB.controllerProfile = "auto"
+    end
 
     BackhandDB.paddleKeys = BackhandDB.paddleKeys or {}
     for paddleIndex = 1, PADDLE_COUNT do

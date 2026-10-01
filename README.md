@@ -32,6 +32,7 @@ Options include:
 
 - Unlock panels outside Edit Mode
 - Only show in gamepad mode (panels hide in mouse-and-keyboard mode, stay visible while unlocked or in Edit Mode)
+- Controller (Auto, Xbox Elite, DualSense Edge, Generic; Auto detects the connected controller)
 - Paddle inputs (one row per paddle, click to assign by pressing), Assign P1-P4, Setup guide
 - HUD scale
 - Inactive panel opacity (1.00 = native, no fading)
@@ -81,6 +82,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 - `/backhand keys [P1 P2 P3 P4 | reset]` — show or set the paddle inputs, e.g. `/backhand keys F13 F14 F15 F16`.
 - `/backhand diag` — print gamepad integration diagnostics, including the paddle inputs and which raw buttons carry PADPADDLE1-4.
 - `/backhand diag copy` — open the same diagnostics as plain text you can select and copy.
+- `/backhand controller [auto|elite|edge|generic]` — show the controller profile, or set it when auto-detection cannot see the real controller (Steam Input, for example).
 - `/backhand test` — for 30 seconds, print the raw controller button index of anything you press and what the client maps it to. Use it to confirm the paddles reach WoW at all.
 - `/backhand learn` — press P1, P2, P3, P4 in order. The addon writes a device config (vendor/product specific) through `C_GamePad.SetConfig` so those raw buttons become PADPADDLE1-4. The client stores it in `WTF/GamePadConfig_AddOns.json`. Learning refuses raw buttons the client already uses (A/B/X/Y, D-pad, ...), because a paddle arriving as one of those means the controller profile mirrors it, and rebinding it would take the button away from the native UI. `/backhand learn force` overrides that check. `/backhand learn cancel` aborts; `/backhand learn clear` deletes the addon's device config again (follow with `/reload`).
 - `/backhand help` — print command help.
@@ -91,6 +93,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 
 - addon version and client build
 - native storage status and slots
+- controller name, vendor / product IDs, label style, and the resolved controller profile (auto-detected or set manually)
 - storage scope (per character, and whether the actions were copied from an older account-wide profile)
 - LT / RT bindings
 - modifier-emulation CVars

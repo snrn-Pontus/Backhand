@@ -20,6 +20,7 @@ Buttons.lua
 FocusRouting.lua
 Layers.lua
 RawInput.lua
+Controller.lua
 Panels.lua
 PaddleKeys.lua
 Diagnostics.lua

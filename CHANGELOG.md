@@ -1,5 +1,9 @@
 # Backhand changelog
 
+## Unreleased
+
+- **Controller profile.** Backhand now recognises which paddle controller is connected: Xbox Elite (four paddles), DualSense Edge (two back buttons) or a generic controller. It reads the active controller's vendor and product IDs and name, and updates when a controller is connected, disconnected or switched, without a reload. Nothing changes on screen yet; the profile is groundwork for controller-specific layouts. Steam Input and some drivers hide the real controller, so the Settings page has a **Controller** button (Auto, Xbox Elite, DualSense Edge, Generic) and `/backhand controller [auto|elite|edge|generic]` sets it from chat. Changing it never touches paddle keys or actions. `/backhand diag` shows the controller's name, IDs, label style and the resolved profile (#2).
+
 ## 0.8.1 — Panels collapse in menus
 
 - **Panels collapse when a menu has gamepad focus**, like the native crossbar. Opening the game menu, bags, settings or any other controller-navigable window used to leave the selected paddle panel expanded. Backhand now follows the same check the crossbar uses (only the core gameplay bindings are active), so the panel collapses, its focus background, button prompts and LT / RT prompt hide, and it expands again when focus returns. The selected layer and the paddle bindings do not change. `/backhand diag` shows "Native crossbar focused" and "Visual expanded" (#5).
