@@ -271,7 +271,8 @@ local function GetButtonSpellID(button)
     end
 
     if IsSecret(spellID) then
-        return nil
+        -- Fallback macros: nil unless the macro was static (see above).
+        return button.spellAlertSpellID
     end
     if type(spellID) ~= "number" then
         spellID = nil
