@@ -316,8 +316,36 @@ local function IsSpellAlertActive(button, spellID)
     return overlayed == true
 end
 
+local spellAlertTest = false
+
 local function UpdateSpellAlert(button)
+    if spellAlertTest then
+        SetSpellAlertShown(button, button.hasAction == true)
+        return
+    end
     SetSpellAlertShown(button, IsSpellAlertActive(button, GetButtonSpellID(button)))
+end
+
+-- /backhand glowtest: shows the glow on every filled slot regardless of procs,
+-- to tell a drawing problem apart from a proc detection problem. Returns how
+-- many slots show it and how many failed to create the template.
+local function SetSpellAlertTest(enabled)
+    spellAlertTest = enabled == true
+    local shown, failed = 0, 0
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button then
+                UpdateSpellAlert(button)
+                if button.spellAlertShown then
+                    shown = shown + 1
+                elseif spellAlertTest and button.hasAction and button.visual.spellAlertUnavailable then
+                    failed = failed + 1
+                end
+            end
+        end
+    end
+    return shown, failed
 end
 
 local function OnSpellAlertEvent(spellID, shown)
@@ -348,7 +376,7 @@ local function GetSpellAlertDiagnosticLines()
     local lines = {}
     local template = (C_XMLUtil and C_XMLUtil.GetTemplateInfo
         and SafeCall(C_XMLUtil.GetTemplateInfo, "ActionButtonSpellAlertTemplate")) and "yes" or "unknown"
-    lines[1] = string.format("Proc glow: template=%s, IsSpellOverlayed=%s, events=%d (secret %d), last=%s",
+    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d), last=%s",
         template,
         tostring(C_SpellActivationOverlay ~= nil and type(C_SpellActivationOverlay.IsSpellOverlayed) == "function"),
         spellAlertStats.events, spellAlertStats.secretEvents, tostring(spellAlertStats.last or "none"))
@@ -893,6 +921,7 @@ ns.UpdatePromptVisibility = UpdatePromptVisibility
 ns.UpdateButtonVisual = UpdateButtonVisual
 ns.OnSpellAlertEvent = OnSpellAlertEvent
 ns.GetSpellAlertDiagnosticLines = GetSpellAlertDiagnosticLines
+ns.SetSpellAlertTest = SetSpellAlertTest
 ns.ClearButtonAction = ClearButtonAction
 ns.GetButtonCenter = GetButtonCenter
 ns.LayoutButtonVisual = LayoutButtonVisual
