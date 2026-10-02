@@ -21,6 +21,7 @@ local GetMappedState = ns.GetMappedState
 local GetPaddleRawMappingDiagnostic = ns.GetPaddleRawMappingDiagnostic
 local GetVisualPanelFromGamepadState = ns.GetVisualPanelFromGamepadState
 local IsNativeCrossbarFocused = ns.IsNativeCrossbarFocused
+local GetSpellAlertDiagnosticLines = ns.GetSpellAlertDiagnosticLines
 
 local function GetMappedDiagnosticValues()
     local state = GetMappedState()
@@ -163,6 +164,10 @@ local function GetDiagnosticLines(separator)
             #conflicts == 0 and "OK" or ("CONFLICT " .. table.concat(conflicts, ", ")),
             separator,
             table.concat(rangeText, ", "))
+    end
+
+    for _, line in ipairs(GetSpellAlertDiagnosticLines()) do
+        lines[#lines + 1] = line
     end
 
     return lines

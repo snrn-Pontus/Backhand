@@ -205,9 +205,11 @@ end
 
 -- The spell behind a slot, as the native button resolves it for spell alerts
 -- (ActionBarActionButtonMixin:UpdateSpellAlert): the spell itself, or the
--- spell a macro currently casts. Secret answers are treated as no spell.
+-- spell a macro currently casts. In combat the client may answer with secret
+-- values; actions cannot change then, so the last readable spell is kept.
 local function GetButtonSpellID(button)
     if not button.hasAction then
+        button.spellAlertSpellID = nil
         return nil
     end
 
@@ -215,7 +217,7 @@ local function GetButtonSpellID(button)
     if button.actionSlot then
         local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
         if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
-            return nil
+            return button.spellAlertSpellID
         end
         if actionType == "spell" or (actionType == "macro" and subType == "spell") then
             spellID = id
@@ -229,9 +231,13 @@ local function GetButtonSpellID(button)
         end
     end
 
-    if IsSecret(spellID) or type(spellID) ~= "number" then
-        return nil
+    if IsSecret(spellID) then
+        return button.spellAlertSpellID
     end
+    if type(spellID) ~= "number" then
+        spellID = nil
+    end
+    button.spellAlertSpellID = spellID
     return spellID
 end
 
@@ -288,33 +294,92 @@ local function SetSpellAlertShown(button, shown)
     end
 end
 
-local function UpdateSpellAlert(button)
-    local spellID = GetButtonSpellID(button)
-    local shown = false
-    if spellID and C_SpellActivationOverlay then
-        shown = SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
-        if IsSecret(shown) then
-            shown = button.spellAlertShown
-        end
+-- Proc state reported by SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, keyed by
+-- spell ID. It takes precedence over IsSpellOverlayed, which may answer with
+-- a secret value in combat; the query covers procs that were already active
+-- before the addon loaded.
+local overlayedSpells = {}
+local spellAlertStats = { events = 0, secretEvents = 0 }
+
+local function IsSpellAlertActive(button, spellID)
+    if not spellID then
+        return false
     end
-    SetSpellAlertShown(button, shown == true)
+    if overlayedSpells[spellID] ~= nil then
+        return overlayedSpells[spellID]
+    end
+    local overlayed = C_SpellActivationOverlay
+        and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
+    if IsSecret(overlayed) then
+        return button.spellAlertShown == true
+    end
+    return overlayed == true
 end
 
--- SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, matched against each slot's
--- spell like the native OnEvent does.
+local function UpdateSpellAlert(button)
+    SetSpellAlertShown(button, IsSpellAlertActive(button, GetButtonSpellID(button)))
+end
+
 local function OnSpellAlertEvent(spellID, shown)
+    spellAlertStats.events = spellAlertStats.events + 1
+    if IsSecret(spellID) then
+        spellAlertStats.secretEvents = spellAlertStats.secretEvents + 1
+        spellAlertStats.last = (shown and "show" or "hide") .. " (secret spell)"
+    else
+        spellAlertStats.last = (shown and "show " or "hide ") .. tostring(spellID)
+        if type(spellID) == "number" then
+            overlayedSpells[spellID] = shown
+        end
+    end
+
     for panelIndex = 1, PANEL_COUNT do
         for paddleIndex = 1, PADDLE_COUNT do
             local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
             if button then
-                if IsSecret(spellID) then
-                    UpdateSpellAlert(button)
-                elseif GetButtonSpellID(button) == spellID then
-                    SetSpellAlertShown(button, shown)
-                end
+                UpdateSpellAlert(button)
             end
         end
     end
+end
+
+-- Lines for /backhand diag: what each filled slot resolves to and whether
+-- its glow is showing.
+local function GetSpellAlertDiagnosticLines()
+    local lines = {}
+    local template = (C_XMLUtil and C_XMLUtil.GetTemplateInfo
+        and SafeCall(C_XMLUtil.GetTemplateInfo, "ActionButtonSpellAlertTemplate")) and "yes" or "unknown"
+    lines[1] = string.format("Proc glow: template=%s, IsSpellOverlayed=%s, events=%d (secret %d), last=%s",
+        template,
+        tostring(C_SpellActivationOverlay ~= nil and type(C_SpellActivationOverlay.IsSpellOverlayed) == "function"),
+        spellAlertStats.events, spellAlertStats.secretEvents, tostring(spellAlertStats.last or "none"))
+
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button and button.hasAction then
+                local actionText = "fallback"
+                if button.actionSlot then
+                    local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
+                    if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
+                        actionText = "slot " .. button.actionSlot .. " secret"
+                    else
+                        actionText = string.format("slot %d %s/%s/%s", button.actionSlot,
+                            tostring(actionType), tostring(id), tostring(subType))
+                    end
+                end
+                local spellID = GetButtonSpellID(button)
+                local overlayed = spellID and C_SpellActivationOverlay
+                    and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
+                lines[#lines + 1] = string.format("  %s P%d: %s, spell=%s, overlayed=%s, event=%s, glow=%s%s",
+                    PANELS[panelIndex].label, paddleIndex, actionText, tostring(spellID),
+                    IsSecret(overlayed) and "secret" or tostring(overlayed),
+                    spellID and tostring(overlayedSpells[spellID]) or "nil",
+                    button.spellAlertShown and "shown" or "hidden",
+                    button.visual.spellAlertUnavailable and " (template failed)" or "")
+            end
+        end
+    end
+    return lines
 end
 
 local function ShouldShowPrompts()
@@ -827,6 +892,7 @@ ns.UpdateRangeIndicator = UpdateRangeIndicator
 ns.UpdatePromptVisibility = UpdatePromptVisibility
 ns.UpdateButtonVisual = UpdateButtonVisual
 ns.OnSpellAlertEvent = OnSpellAlertEvent
+ns.GetSpellAlertDiagnosticLines = GetSpellAlertDiagnosticLines
 ns.ClearButtonAction = ClearButtonAction
 ns.GetButtonCenter = GetButtonCenter
 ns.LayoutButtonVisual = LayoutButtonVisual
