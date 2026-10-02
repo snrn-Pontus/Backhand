@@ -403,6 +403,10 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             RefreshButtons()
             RegisterSecureFrameRefs()
             BindPaddlesToPanel(GetVisualPanelFromGamepadState())
+        else
+            -- Button states that were secret in combat showed as off;
+            -- read them again now that they are readable.
+            UpdateAllButtonVisuals()
         end
         if ns.pendingAppearanceRefresh then
             ApplyAppearance()
