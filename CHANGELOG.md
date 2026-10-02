@@ -1,5 +1,9 @@
 # Backhand changelog
 
+## Unreleased
+
+- **Proc glow on paddle slots.** When a proc lights up a spell (spell activation overlay), the paddle slot holding that spell, or a macro that casts it, now shows the same animated glow as the native crossbar buttons. It uses Blizzard's own spell alert template at the native size, follows the slot as the panel expands and collapses, and clears when the proc ends or the slot's action changes. Like the native buttons, only real procs glow: reactive abilities such as Mongoose Bite do not. The glow also works in combat, where the proc state is hidden from addons. One exception: a macro with conditionals (`[mod]`, `[stance]`, `;` alternatives, `/castsequence`) cannot glow while the game hides which spell it is about to cast. Works for native-storage slots and fallback slots. `/backhand glowtest` shows the glow on every filled slot, and `/backhand diag` lists the recent proc events and what each slot resolves to (#8).
+
 ## 0.8.1 — Panels collapse in menus
 
 - **Panels collapse when a menu has gamepad focus**, like the native crossbar. Opening the game menu, bags, settings or any other controller-navigable window used to leave the selected paddle panel expanded. Backhand now follows the same check the crossbar uses (only the core gameplay bindings are active), so the panel collapses, its focus background, button prompts and LT / RT prompt hide, and it expands again when focus returns. The selected layer and the paddle bindings do not change. `/backhand diag` shows "Native crossbar focused" and "Visual expanded" (#5).

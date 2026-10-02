@@ -23,6 +23,8 @@ local UpdateEditOverlays = ns.UpdateEditOverlays
 local InitializeNativeStorage = ns.InitializeNativeStorage
 local UpdateRangeIndicator = ns.UpdateRangeIndicator
 local UpdateButtonVisual = ns.UpdateButtonVisual
+local OnSpellAlertEvent = ns.OnSpellAlertEvent
+local SetSpellAlertTest = ns.SetSpellAlertTest
 local ClearButtonAction = ns.ClearButtonAction
 local UpdateFocusFades = ns.UpdateFocusFades
 local UpdatePanelVisualState = ns.UpdatePanelVisualState
@@ -164,6 +166,7 @@ local function PrintHelp()
     Print("/backhand assign [1-4] - assign one paddle, or all four in order, by pressing it")
     Print("/backhand keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /backhand keys F13 F14 F15 F16")
     Print("/backhand test - print which raw controller buttons fire when you press the paddles")
+    Print("/backhand glowtest - toggle the proc glow on every filled slot, to check that it draws")
     Print("/backhand learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
     Print("/backhand learn clear - remove the addon's device config again")
     Print("/backhand learn force - allow rebinding raw buttons the client already uses (steals them from the native UI)")
@@ -238,6 +241,14 @@ SlashCmdList.BACKHAND = function(message)
                 Print(string.format("P%d: %s", paddleIndex, GetKeyDisplayName(GetPaddleKey(paddleIndex))))
             end
         end
+    elseif command == "glowtest" then
+        ns.spellAlertTestEnabled = not ns.spellAlertTestEnabled
+        local shown, failed = SetSpellAlertTest(ns.spellAlertTestEnabled)
+        if ns.spellAlertTestEnabled then
+            Print(string.format("Glow test on: %d slot(s) glowing, %d failed to create the glow. Type /backhand glowtest again to stop.", shown, failed))
+        else
+            Print("Glow test off.")
+        end
     elseif command == "test" then
         StartRawInputTest()
     elseif command == "learn" then
@@ -305,6 +316,8 @@ addon:RegisterEvent("ACTIONBAR_UPDATE_STATE")
 addon:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
 addon:RegisterEvent("SPELL_UPDATE_USABLE")
 addon:RegisterEvent("ACTION_RANGE_CHECK_UPDATE")
+addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
+addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE")
 addon:RegisterEvent("UPDATE_MACROS")
 addon:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 addon:RegisterEvent("BAG_UPDATE_COOLDOWN")
@@ -437,6 +450,11 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
                 end
             end)
         end
+        return
+    end
+
+    if event == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW" or event == "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE" then
+        OnSpellAlertEvent(arg1, event == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
         return
     end
 

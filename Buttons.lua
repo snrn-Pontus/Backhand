@@ -203,6 +203,386 @@ local function UpdateRangeIndicator(button, checksRange, inRange)
     end
 end
 
+-- Slash commands whose spell changes from cast to cast, in English and in
+-- every localized alias the client registers (SLASH_CASTSEQUENCE1, 2, ...).
+local spellChangingCommands
+local function GetSpellChangingCommands()
+    if not spellChangingCommands then
+        spellChangingCommands = { "/castsequence", "/castrandom", "/userandom" }
+        for _, key in ipairs({ "SLASH_CASTSEQUENCE", "SLASH_CASTRANDOM", "SLASH_USERANDOM" }) do
+            local index = 1
+            while type(_G[key .. index]) == "string" do
+                spellChangingCommands[#spellChangingCommands + 1] = _G[key .. index]:lower()
+                index = index + 1
+            end
+        end
+    end
+    return spellChangingCommands
+end
+
+-- A macro without conditionals, alternatives or sequences always casts the
+-- same spell. Macros cannot be edited in combat, so its spell can be kept
+-- like a plain spell's.
+local function IsStaticMacroBody(body)
+    if type(body) ~= "string" or IsSecret(body) then
+        return false
+    end
+    local lower = body:lower()
+    if lower:find("[", 1, true) or lower:find(";", 1, true) then
+        return false
+    end
+    for _, command in ipairs(GetSpellChangingCommands()) do
+        if lower:find(command, 1, true) then
+            return false
+        end
+    end
+    return true
+end
+
+-- Native slots only expose the macro's name. Two macros may share it, and
+-- then GetMacroIndexByName may pick the other one, so a name is only trusted
+-- when exactly one account or character macro has it.
+local function IsUniqueMacroName(name)
+    local numAccount, numCharacter = SafeCall(GetNumMacros)
+    if type(numAccount) ~= "number" or type(numCharacter) ~= "number" then
+        return false
+    end
+    local characterBase = Constants and Constants.MacroConsts and Constants.MacroConsts.MAX_ACCOUNT_MACROS or 120
+    local count = 0
+    for index = 1, numAccount do
+        if SafeCall(GetMacroInfo, index) == name then
+            count = count + 1
+        end
+    end
+    for index = characterBase + 1, characterBase + numCharacter do
+        if SafeCall(GetMacroInfo, index) == name then
+            count = count + 1
+        end
+    end
+    return count == 1
+end
+
+-- Classifying a macro reads every macro, and the spell lookup runs on each
+-- cooldown event, so the result is kept per slot until the slot's macro or
+-- spell changes or macros are edited (RefreshButtons, on UPDATE_MACROS).
+local macroCacheGeneration = 0
+
+local function GetButtonMacroBody(button)
+    local macroIndex
+    if button.actionSlot then
+        local name = SafeCall(GetActionText, button.actionSlot)
+        if type(name) == "string" and not IsSecret(name) and IsUniqueMacroName(name) then
+            macroIndex = SafeCall(GetMacroIndexByName, name)
+        end
+    elseif button.actionData then
+        macroIndex = button.actionData.id
+    end
+    if type(macroIndex) ~= "number" or IsSecret(macroIndex) or macroIndex == 0 then
+        return nil
+    end
+    local _, _, body = SafeCall(GetMacroInfo, macroIndex)
+    return body
+end
+
+-- The spell behind a slot, as the native button resolves it for spell alerts
+-- (ActionBarActionButtonMixin:UpdateSpellAlert): the spell itself, or the
+-- spell a macro currently casts. In combat the client may answer with secret
+-- values. Slot contents cannot change then, so the last readable ID of a
+-- plain spell or a macro without conditionals is kept; a conditional macro's
+-- is not, because [mod], [stance], [@target,harm], ... can switch the spell
+-- it casts mid-fight.
+local function GetButtonSpellID(button)
+    if not button.hasAction then
+        button.spellAlertSpellID = nil
+        return nil
+    end
+
+    local spellID, isPlainSpell, isMacro
+    if button.actionSlot then
+        local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
+        if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
+            return button.spellAlertSpellID
+        end
+        isPlainSpell = actionType == "spell"
+        isMacro = actionType == "macro"
+        if isPlainSpell or (isMacro and subType == "spell") then
+            spellID = id
+        end
+    else
+        local action = button.actionData
+        if action and action.kind == "spell" then
+            spellID = action.id
+            isPlainSpell = true
+        elseif action and action.kind == "macro" and type(GetMacroSpell) == "function" then
+            spellID = SafeCall(GetMacroSpell, action.id)
+            isMacro = true
+        end
+    end
+
+    if IsSecret(spellID) then
+        -- Fallback macros: nil unless the macro was static (see above).
+        return button.spellAlertSpellID
+    end
+    if type(spellID) ~= "number" then
+        spellID = nil
+    end
+    local keep = isPlainSpell
+    if isMacro and spellID ~= nil then
+        local macroKey = button.actionSlot and SafeCall(GetActionText, button.actionSlot) or button.actionData.id
+        if IsSecret(macroKey) then
+            macroKey = nil
+        end
+        if button.spellAlertMacroGeneration ~= macroCacheGeneration
+            or button.spellAlertMacroKey ~= macroKey
+            or button.spellAlertMacroSpell ~= spellID then
+            button.spellAlertMacroGeneration = macroCacheGeneration
+            button.spellAlertMacroKey = macroKey
+            button.spellAlertMacroSpell = spellID
+            button.spellAlertMacroStatic = IsStaticMacroBody(GetButtonMacroBody(button))
+        end
+        keep = button.spellAlertMacroStatic
+    end
+    button.spellAlertSpellID = keep and spellID or nil
+    return spellID
+end
+
+-- Native spell alerts are sized 1.4x the button (ActionButtonSpellAlerts.lua).
+local SPELL_ALERT_SCALE = 1.4
+
+local function ResumeSpellAlertLoop(frame)
+    if not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
+        frame.ProcLoop:Play()
+    end
+end
+
+-- Uses the same template and animations as the native action buttons, but on
+-- our own frame instead of through ActionButtonSpellAlertManager, so no
+-- Blizzard state is written from addon code.
+local function GetSpellAlertFrame(button)
+    local visual = button.visual
+    if visual.spellAlert or visual.spellAlertUnavailable then
+        return visual.spellAlert
+    end
+
+    local ok, frame = pcall(CreateFrame, "Frame", nil, visual, "ActionButtonSpellAlertTemplate")
+    if not ok or not frame or not frame.ProcStartAnim or not frame.ProcLoop then
+        visual.spellAlertUnavailable = true
+        return nil
+    end
+
+    frame:SetPoint("CENTER")
+    local width, height = visual:GetSize()
+    frame:SetSize(width * SPELL_ALERT_SCALE, height * SPELL_ALERT_SCALE)
+    frame:SetFrameLevel(visual.cooldown:GetFrameLevel() + 1)
+    -- Animations stop while the panels are hidden (gamepadOnly, interface
+    -- transitions); resume an active glow when they are shown again.
+    frame:HookScript("OnShow", function(self)
+        if button.spellAlertShown then
+            ResumeSpellAlertLoop(self)
+        end
+    end)
+    visual.spellAlert = frame
+    return frame
+end
+
+-- shown may be a secret boolean (IsSpellOverlayed in combat). Addon code
+-- cannot test it, so the glow keeps looping and the client applies it as
+-- the frame's alpha through SetAlphaFromBoolean.
+local function SetSpellAlertShown(button, shown)
+    if IsSecret(shown) then
+        local frame = GetSpellAlertFrame(button)
+        if not frame or type(frame.SetAlphaFromBoolean) ~= "function" then
+            return
+        end
+        frame:SetAlphaFromBoolean(shown, 1, 0)
+        frame:Show()
+        button.spellAlertShown = true
+        ResumeSpellAlertLoop(frame)
+        button.spellAlertSecret = true
+        return
+    end
+
+    local frame = shown and GetSpellAlertFrame(button) or button.visual.spellAlert
+    if not frame then
+        return
+    end
+
+    if button.spellAlertSecret then
+        -- Back to a readable answer: drop the secret alpha. A glow that was
+        -- already looping continues without the birth animation.
+        button.spellAlertSecret = false
+        frame:SetAlpha(1)
+    end
+
+    if not shown then
+        if button.spellAlertShown then
+            frame:Hide()
+            frame.ProcStartAnim:Stop()
+            frame.ProcLoop:Stop()
+            button.spellAlertShown = false
+        end
+        return
+    end
+
+    if not button.spellAlertShown then
+        -- Shown before the flag is set, so the OnShow hook does not start the
+        -- loop on top of the birth animation.
+        frame:Show()
+        button.spellAlertShown = true
+        frame.ProcStartAnim:Play()
+    else
+        -- The loop stops while the panel is hidden; resume it without the
+        -- birth animation, like ShowAlert with skipBirth.
+        ResumeSpellAlertLoop(frame)
+    end
+end
+
+-- Proc state reported by SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, keyed by
+-- spell ID like the native OnEvent matches it. It takes precedence over
+-- IsSpellOverlayed, which may answer with a secret value in combat; the query
+-- covers procs that were already active before the addon loaded. An event
+-- with a secret spell ID cannot be recorded, so it clears the table and every
+-- slot falls back to the live query instead of a state that may be stale.
+local overlayedSpells = {}
+local spellAlertStats = { events = 0, secretEvents = 0, secretQueries = 0, history = {} }
+local SPELL_ALERT_HISTORY_SIZE = 6
+
+local function GetSpellName(spellID)
+    local name
+    if C_Spell and type(C_Spell.GetSpellName) == "function" then
+        name = SafeCall(C_Spell.GetSpellName, spellID)
+    elseif type(GetSpellInfo) == "function" then
+        name = SafeCall(GetSpellInfo, spellID)
+    end
+    if IsSecret(name) or type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
+end
+
+local function IsSpellAlertActive(button, spellID)
+    if not spellID then
+        return false
+    end
+    if overlayedSpells[spellID] ~= nil then
+        return overlayedSpells[spellID]
+    end
+    local overlayed = C_SpellActivationOverlay
+        and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
+    if IsSecret(overlayed) then
+        spellAlertStats.secretQueries = spellAlertStats.secretQueries + 1
+        return overlayed
+    end
+    if overlayed == true then
+        spellAlertStats.lastOverlayed = string.format("%s (%s)", tostring(spellID), tostring(GetSpellName(spellID) or "unknown"))
+    end
+    return overlayed == true
+end
+
+local spellAlertTest = false
+
+local function UpdateSpellAlert(button)
+    if spellAlertTest then
+        SetSpellAlertShown(button, button.hasAction == true)
+        return
+    end
+    SetSpellAlertShown(button, IsSpellAlertActive(button, GetButtonSpellID(button)))
+end
+
+-- /backhand glowtest: shows the glow on every filled slot regardless of procs,
+-- to tell a drawing problem apart from a proc detection problem. Returns how
+-- many slots show it and how many failed to create the template.
+local function SetSpellAlertTest(enabled)
+    spellAlertTest = enabled == true
+    local shown, failed = 0, 0
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button then
+                UpdateSpellAlert(button)
+                if button.spellAlertShown then
+                    shown = shown + 1
+                elseif spellAlertTest and button.hasAction and button.visual.spellAlertUnavailable then
+                    failed = failed + 1
+                end
+            end
+        end
+    end
+    return shown, failed
+end
+
+local function OnSpellAlertEvent(spellID, shown)
+    spellAlertStats.events = spellAlertStats.events + 1
+    if IsSecret(spellID) then
+        spellAlertStats.secretEvents = spellAlertStats.secretEvents + 1
+        spellAlertStats.last = (shown and "show" or "hide") .. " (secret spell)"
+        wipe(overlayedSpells)
+    else
+        local name = type(spellID) == "number" and GetSpellName(spellID) or nil
+        spellAlertStats.last = string.format("%s %s (%s)", shown and "show" or "hide",
+            tostring(spellID), tostring(name or "unknown"))
+        if type(spellID) == "number" then
+            overlayedSpells[spellID] = shown
+        end
+    end
+    local history = spellAlertStats.history
+    table.insert(history, 1, spellAlertStats.last)
+    history[SPELL_ALERT_HISTORY_SIZE + 1] = nil
+
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button then
+                UpdateSpellAlert(button)
+            end
+        end
+    end
+end
+
+-- Lines for /backhand diag: what each filled slot resolves to and whether
+-- its glow is showing.
+local function GetSpellAlertDiagnosticLines()
+    local lines = {}
+    local template = (C_XMLUtil and C_XMLUtil.GetTemplateInfo
+        and SafeCall(C_XMLUtil.GetTemplateInfo, "ActionButtonSpellAlertTemplate")) and "yes" or "unknown"
+    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d), secret queries=%d, last overlayed=%s",
+        spellAlertTest and "TEST MODE, " or "", template,
+        tostring(C_SpellActivationOverlay ~= nil and type(C_SpellActivationOverlay.IsSpellOverlayed) == "function"),
+        spellAlertStats.events, spellAlertStats.secretEvents, spellAlertStats.secretQueries,
+        tostring(spellAlertStats.lastOverlayed or "none"))
+    lines[2] = "  Recent proc events (newest first): "
+        .. (#spellAlertStats.history > 0 and table.concat(spellAlertStats.history, "; ") or "none")
+
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button and button.hasAction then
+                local actionText = "fallback"
+                if button.actionSlot then
+                    local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
+                    if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
+                        actionText = "slot " .. button.actionSlot .. " secret"
+                    else
+                        actionText = string.format("slot %d %s/%s/%s", button.actionSlot,
+                            tostring(actionType), tostring(id), tostring(subType))
+                    end
+                end
+                local spellID = GetButtonSpellID(button)
+                local overlayed = spellID and C_SpellActivationOverlay
+                    and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
+                lines[#lines + 1] = string.format("  %s P%d: %s, spell=%s (%s), overlayed=%s, event=%s, glow=%s%s",
+                    PANELS[panelIndex].label, paddleIndex, actionText, tostring(spellID),
+                    tostring(spellID and GetSpellName(spellID) or "-"),
+                    IsSecret(overlayed) and "secret" or tostring(overlayed),
+                    spellID and tostring(overlayedSpells[spellID]) or "nil",
+                    button.spellAlertSecret and "secret" or (button.spellAlertShown and "shown" or "hidden"),
+                    button.visual.spellAlertUnavailable and " (template failed)" or "")
+            end
+        end
+    end
+    return lines
+end
+
 local function ShouldShowPrompts()
     return BackhandDB.showPaddleBadges ~= false and GetNativeCVarBool(NATIVE_CVAR_PROMPTS, true)
 end
@@ -271,6 +651,7 @@ local function UpdateButtonVisual(button)
     if not hasAction then
         UpdateRangeIndicator(button, false, false)
     end
+    UpdateSpellAlert(button)
     UpdatePromptVisibility(button)
 end
 
@@ -521,6 +902,9 @@ local function LayoutButtonVisual(button)
     visual:ClearAllPoints()
     visual:SetPoint("CENTER", panel, "CENTER", x, y)
     visual.emptyGlyph:SetSize(size * LAYOUT.EMPTY_GLYPH_RATIO, size * LAYOUT.EMPTY_GLYPH_RATIO)
+    if visual.spellAlert then
+        visual.spellAlert:SetSize(size * SPELL_ALERT_SCALE, size * SPELL_ALERT_SCALE)
+    end
 
     local shadowDistance = expanded and LAYOUT.SHADOW_DISTANCE_EXPANDED or LAYOUT.SHADOW_DISTANCE_COLLAPSED
     for _, shadow in ipairs({ visual.shadow, visual.shadowFocus }) do
@@ -696,6 +1080,7 @@ end
 
 -- Full refresh including secure attributes. Deferred while in combat.
 local function RefreshButtons()
+    macroCacheGeneration = macroCacheGeneration + 1
     ForEachButton(function(button, panelIndex, paddleIndex)
         if not button.actionSlot then
             button.actionData = BackhandCharDB.fallbackActions[panelIndex][paddleIndex]
@@ -708,6 +1093,9 @@ end
 ns.UpdateRangeIndicator = UpdateRangeIndicator
 ns.UpdatePromptVisibility = UpdatePromptVisibility
 ns.UpdateButtonVisual = UpdateButtonVisual
+ns.OnSpellAlertEvent = OnSpellAlertEvent
+ns.GetSpellAlertDiagnosticLines = GetSpellAlertDiagnosticLines
+ns.SetSpellAlertTest = SetSpellAlertTest
 ns.ClearButtonAction = ClearButtonAction
 ns.GetButtonCenter = GetButtonCenter
 ns.LayoutButtonVisual = LayoutButtonVisual
