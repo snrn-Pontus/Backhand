@@ -206,38 +206,42 @@ end
 -- The spell behind a slot, as the native button resolves it for spell alerts
 -- (ActionBarActionButtonMixin:UpdateSpellAlert): the spell itself, or the
 -- spell a macro currently casts. In combat the client may answer with secret
--- values; actions cannot change then, so the last readable spell is kept.
+-- values. Slot contents cannot change then, so a plain spell's last readable
+-- ID is kept; a macro is not, because its conditionals ([mod], [stance],
+-- [@target,harm], ...) can switch the spell it casts mid-fight.
 local function GetButtonSpellID(button)
     if not button.hasAction then
         button.spellAlertSpellID = nil
         return nil
     end
 
-    local spellID
+    local spellID, isPlainSpell
     if button.actionSlot then
         local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
         if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
             return button.spellAlertSpellID
         end
-        if actionType == "spell" or (actionType == "macro" and subType == "spell") then
+        isPlainSpell = actionType == "spell"
+        if isPlainSpell or (actionType == "macro" and subType == "spell") then
             spellID = id
         end
     else
         local action = button.actionData
         if action and action.kind == "spell" then
             spellID = action.id
+            isPlainSpell = true
         elseif action and action.kind == "macro" and type(GetMacroSpell) == "function" then
             spellID = SafeCall(GetMacroSpell, action.id)
         end
     end
 
     if IsSecret(spellID) then
-        return button.spellAlertSpellID
+        return nil
     end
     if type(spellID) ~= "number" then
         spellID = nil
     end
-    button.spellAlertSpellID = spellID
+    button.spellAlertSpellID = isPlainSpell and spellID or nil
     return spellID
 end
 
@@ -326,7 +330,9 @@ end
 -- Proc state reported by SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, keyed by
 -- spell ID like the native OnEvent matches it. It takes precedence over
 -- IsSpellOverlayed, which may answer with a secret value in combat; the query
--- covers procs that were already active before the addon loaded.
+-- covers procs that were already active before the addon loaded. An event
+-- with a secret spell ID cannot be recorded, so it clears the table and every
+-- slot falls back to the live query instead of a state that may be stale.
 local overlayedSpells = {}
 local spellAlertStats = { events = 0, secretEvents = 0, secretQueries = 0, history = {} }
 local SPELL_ALERT_HISTORY_SIZE = 6
@@ -400,6 +406,7 @@ local function OnSpellAlertEvent(spellID, shown)
     if IsSecret(spellID) then
         spellAlertStats.secretEvents = spellAlertStats.secretEvents + 1
         spellAlertStats.last = (shown and "show" or "hide") .. " (secret spell)"
+        wipe(overlayedSpells)
     else
         local name = type(spellID) == "number" and GetSpellName(spellID) or nil
         spellAlertStats.last = string.format("%s %s (%s)", shown and "show" or "hide",
