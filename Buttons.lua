@@ -295,11 +295,28 @@ local function SetSpellAlertShown(button, shown)
 end
 
 -- Proc state reported by SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, keyed by
--- spell ID. It takes precedence over IsSpellOverlayed, which may answer with
--- a secret value in combat; the query covers procs that were already active
--- before the addon loaded.
+-- spell ID and by spell name. It takes precedence over IsSpellOverlayed, which
+-- may answer with a secret value in combat; the query covers procs that were
+-- already active before the addon loaded. The name catches ranked spells
+-- (Mongoose Bite and other reactive abilities) when the event reports a
+-- different rank than the one on the slot.
 local overlayedSpells = {}
-local spellAlertStats = { events = 0, secretEvents = 0 }
+local overlayedNames = {}
+local spellAlertStats = { events = 0, secretEvents = 0, history = {} }
+local SPELL_ALERT_HISTORY_SIZE = 6
+
+local function GetSpellName(spellID)
+    local name
+    if C_Spell and type(C_Spell.GetSpellName) == "function" then
+        name = SafeCall(C_Spell.GetSpellName, spellID)
+    elseif type(GetSpellInfo) == "function" then
+        name = SafeCall(GetSpellInfo, spellID)
+    end
+    if IsSecret(name) or type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
+end
 
 local function IsSpellAlertActive(button, spellID)
     if not spellID then
@@ -307,6 +324,10 @@ local function IsSpellAlertActive(button, spellID)
     end
     if overlayedSpells[spellID] ~= nil then
         return overlayedSpells[spellID]
+    end
+    local name = GetSpellName(spellID)
+    if name and overlayedNames[name] ~= nil then
+        return overlayedNames[name]
     end
     local overlayed = C_SpellActivationOverlay
         and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
@@ -354,11 +375,19 @@ local function OnSpellAlertEvent(spellID, shown)
         spellAlertStats.secretEvents = spellAlertStats.secretEvents + 1
         spellAlertStats.last = (shown and "show" or "hide") .. " (secret spell)"
     else
-        spellAlertStats.last = (shown and "show " or "hide ") .. tostring(spellID)
+        local name = type(spellID) == "number" and GetSpellName(spellID) or nil
+        spellAlertStats.last = string.format("%s %s (%s)", shown and "show" or "hide",
+            tostring(spellID), tostring(name or "unknown"))
         if type(spellID) == "number" then
             overlayedSpells[spellID] = shown
         end
+        if name then
+            overlayedNames[name] = shown
+        end
     end
+    local history = spellAlertStats.history
+    table.insert(history, 1, spellAlertStats.last)
+    history[SPELL_ALERT_HISTORY_SIZE + 1] = nil
 
     for panelIndex = 1, PANEL_COUNT do
         for paddleIndex = 1, PADDLE_COUNT do
@@ -376,10 +405,12 @@ local function GetSpellAlertDiagnosticLines()
     local lines = {}
     local template = (C_XMLUtil and C_XMLUtil.GetTemplateInfo
         and SafeCall(C_XMLUtil.GetTemplateInfo, "ActionButtonSpellAlertTemplate")) and "yes" or "unknown"
-    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d), last=%s",
-        template,
+    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d)",
+        spellAlertTest and "TEST MODE, " or "", template,
         tostring(C_SpellActivationOverlay ~= nil and type(C_SpellActivationOverlay.IsSpellOverlayed) == "function"),
-        spellAlertStats.events, spellAlertStats.secretEvents, tostring(spellAlertStats.last or "none"))
+        spellAlertStats.events, spellAlertStats.secretEvents)
+    lines[2] = "  Recent proc events (newest first): "
+        .. (#spellAlertStats.history > 0 and table.concat(spellAlertStats.history, "; ") or "none")
 
     for panelIndex = 1, PANEL_COUNT do
         for paddleIndex = 1, PADDLE_COUNT do
@@ -398,8 +429,9 @@ local function GetSpellAlertDiagnosticLines()
                 local spellID = GetButtonSpellID(button)
                 local overlayed = spellID and C_SpellActivationOverlay
                     and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
-                lines[#lines + 1] = string.format("  %s P%d: %s, spell=%s, overlayed=%s, event=%s, glow=%s%s",
+                lines[#lines + 1] = string.format("  %s P%d: %s, spell=%s (%s), overlayed=%s, event=%s, glow=%s%s",
                     PANELS[panelIndex].label, paddleIndex, actionText, tostring(spellID),
+                    tostring(spellID and GetSpellName(spellID) or "-"),
                     IsSecret(overlayed) and "secret" or tostring(overlayed),
                     spellID and tostring(overlayedSpells[spellID]) or "nil",
                     button.spellAlertShown and "shown" or "hidden",
