@@ -8,7 +8,7 @@
 ## X-License: MIT
 ## X-Website: https://github.com/snrn-Pontus/Backhand
 ## X-Category: Action Bars
-## Category: Action Bars
+## Category: SNRN
 ## Group: SNRN
 ## SavedVariables: BackhandDB
 ## SavedVariablesPerCharacter: BackhandCharDB
