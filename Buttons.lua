@@ -239,11 +239,39 @@ local function IsStaticMacroBody(body)
     return true
 end
 
+-- Native slots only expose the macro's name. Two macros may share it, and
+-- then GetMacroIndexByName may pick the other one, so a name is only trusted
+-- when exactly one account or character macro has it.
+local function IsUniqueMacroName(name)
+    local numAccount, numCharacter = SafeCall(GetNumMacros)
+    if type(numAccount) ~= "number" or type(numCharacter) ~= "number" then
+        return false
+    end
+    local characterBase = Constants and Constants.MacroConsts and Constants.MacroConsts.MAX_ACCOUNT_MACROS or 120
+    local count = 0
+    for index = 1, numAccount do
+        if SafeCall(GetMacroInfo, index) == name then
+            count = count + 1
+        end
+    end
+    for index = characterBase + 1, characterBase + numCharacter do
+        if SafeCall(GetMacroInfo, index) == name then
+            count = count + 1
+        end
+    end
+    return count == 1
+end
+
+-- Classifying a macro reads every macro, and the spell lookup runs on each
+-- cooldown event, so the result is kept per slot until the slot's macro or
+-- spell changes or macros are edited (RefreshButtons, on UPDATE_MACROS).
+local macroCacheGeneration = 0
+
 local function GetButtonMacroBody(button)
     local macroIndex
     if button.actionSlot then
         local name = SafeCall(GetActionText, button.actionSlot)
-        if type(name) == "string" and not IsSecret(name) then
+        if type(name) == "string" and not IsSecret(name) and IsUniqueMacroName(name) then
             macroIndex = SafeCall(GetMacroIndexByName, name)
         end
     elseif button.actionData then
@@ -298,13 +326,34 @@ local function GetButtonSpellID(button)
     if type(spellID) ~= "number" then
         spellID = nil
     end
-    local keep = isPlainSpell or (isMacro and spellID ~= nil and IsStaticMacroBody(GetButtonMacroBody(button)))
+    local keep = isPlainSpell
+    if isMacro and spellID ~= nil then
+        local macroKey = button.actionSlot and SafeCall(GetActionText, button.actionSlot) or button.actionData.id
+        if IsSecret(macroKey) then
+            macroKey = nil
+        end
+        if button.spellAlertMacroGeneration ~= macroCacheGeneration
+            or button.spellAlertMacroKey ~= macroKey
+            or button.spellAlertMacroSpell ~= spellID then
+            button.spellAlertMacroGeneration = macroCacheGeneration
+            button.spellAlertMacroKey = macroKey
+            button.spellAlertMacroSpell = spellID
+            button.spellAlertMacroStatic = IsStaticMacroBody(GetButtonMacroBody(button))
+        end
+        keep = button.spellAlertMacroStatic
+    end
     button.spellAlertSpellID = keep and spellID or nil
     return spellID
 end
 
 -- Native spell alerts are sized 1.4x the button (ActionButtonSpellAlerts.lua).
 local SPELL_ALERT_SCALE = 1.4
+
+local function ResumeSpellAlertLoop(frame)
+    if not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
+        frame.ProcLoop:Play()
+    end
+end
 
 -- Uses the same template and animations as the native action buttons, but on
 -- our own frame instead of through ActionButtonSpellAlertManager, so no
@@ -325,14 +374,15 @@ local function GetSpellAlertFrame(button)
     local width, height = visual:GetSize()
     frame:SetSize(width * SPELL_ALERT_SCALE, height * SPELL_ALERT_SCALE)
     frame:SetFrameLevel(visual.cooldown:GetFrameLevel() + 1)
+    -- Animations stop while the panels are hidden (gamepadOnly, interface
+    -- transitions); resume an active glow when they are shown again.
+    frame:HookScript("OnShow", function(self)
+        if button.spellAlertShown then
+            ResumeSpellAlertLoop(self)
+        end
+    end)
     visual.spellAlert = frame
     return frame
-end
-
-local function ResumeSpellAlertLoop(frame)
-    if not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
-        frame.ProcLoop:Play()
-    end
 end
 
 -- shown may be a secret boolean (IsSpellOverlayed in combat). Addon code
@@ -346,8 +396,8 @@ local function SetSpellAlertShown(button, shown)
         end
         frame:SetAlphaFromBoolean(shown, 1, 0)
         frame:Show()
-        ResumeSpellAlertLoop(frame)
         button.spellAlertShown = true
+        ResumeSpellAlertLoop(frame)
         button.spellAlertSecret = true
         return
     end
@@ -375,8 +425,10 @@ local function SetSpellAlertShown(button, shown)
     end
 
     if not button.spellAlertShown then
-        button.spellAlertShown = true
+        -- Shown before the flag is set, so the OnShow hook does not start the
+        -- loop on top of the birth animation.
         frame:Show()
+        button.spellAlertShown = true
         frame.ProcStartAnim:Play()
     else
         -- The loop stops while the panel is hidden; resume it without the
@@ -1028,6 +1080,7 @@ end
 
 -- Full refresh including secure attributes. Deferred while in combat.
 local function RefreshButtons()
+    macroCacheGeneration = macroCacheGeneration + 1
     ForEachButton(function(button, panelIndex, paddleIndex)
         if not button.actionSlot then
             button.actionData = BackhandCharDB.fallbackActions[panelIndex][paddleIndex]
