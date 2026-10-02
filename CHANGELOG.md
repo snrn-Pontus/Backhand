@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Controller profile.** Backhand now recognises which paddle controller is connected: Xbox Elite (four paddles), DualSense Edge (two back buttons) or a generic controller. It reads the active controller's vendor and product IDs and name, and updates when a controller is connected, disconnected or switched, without a reload. Nothing changes on screen yet; the profile is groundwork for controller-specific layouts. Steam Input and some drivers hide the real controller, so the Settings page has a **Controller** button (Auto, Xbox Elite, DualSense Edge, Generic) and `/backhand controller [auto|elite|edge|generic]` sets it from chat. Changing it never touches paddle keys or actions. `/backhand diag` shows the controller's name, IDs, label style and the resolved profile (#2).
+- **Native button states on paddle slots.** Paddle slots now show the same states as the native crossbar buttons: the selected ring while a spell waits for a target or a toggle (stance, aura, tradeskill) is active, the red flash while Auto Attack or Auto Shot is running, and the green border on equipped items. A macro shows the state of the spell or item it currently casts. Works for native-storage slots and fallback slots. In combat the game may hide these states from addons; a hidden state shows as off (#9).
 
 ## 0.8.2 — Proc glow
 

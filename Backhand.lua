@@ -31,6 +31,7 @@ local UpdatePanelVisualState = ns.UpdatePanelVisualState
 local CreateUI = ns.CreateUI
 local ForEachButton = ns.ForEachButton
 local UpdateAllButtonVisuals = ns.UpdateAllButtonVisuals
+local UpdateActionFlashes = ns.UpdateActionFlashes
 local RefreshButtons = ns.RefreshButtons
 local BindPaddlesToPanel = ns.BindPaddlesToPanel
 local RegisterSecureFrameRefs = ns.RegisterSecureFrameRefs
@@ -100,6 +101,7 @@ end
 local function StartStatePoller()
     addon:SetScript("OnUpdate", function(_, elapsed)
         UpdateFocusFades()
+        UpdateActionFlashes(elapsed)
 
         rangePollElapsed = rangePollElapsed + elapsed
         if rangePollElapsed >= RANGE_POLL_INTERVAL then
@@ -328,6 +330,14 @@ addon:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 addon:RegisterEvent("BAG_UPDATE_COOLDOWN")
 addon:RegisterEvent("BAG_UPDATE_DELAYED")
 addon:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+-- Active, auto-repeat and equipped states (ActionBarActionButtonMixin:OnEvent).
+addon:RegisterEvent("START_AUTOREPEAT_SPELL")
+addon:RegisterEvent("STOP_AUTOREPEAT_SPELL")
+addon:RegisterEvent("PLAYER_ENTER_COMBAT")
+addon:RegisterEvent("PLAYER_LEAVE_COMBAT")
+addon:RegisterEvent("TRADE_SKILL_SHOW")
+addon:RegisterEvent("TRADE_SKILL_CLOSE")
+addon:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 addon:RegisterEvent("INPUT_DEVICE_INTERFACE_TRANSITION")
 addon:RegisterEvent("GAME_PAD_ACTIVE_CHANGED")
 addon:RegisterEvent("GAME_PAD_CONFIGS_CHANGED")
@@ -492,7 +502,14 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "SPELL_UPDATE_COOLDOWN"
         or event == "BAG_UPDATE_COOLDOWN"
         or event == "BAG_UPDATE_DELAYED"
-        or event == "ITEM_DATA_LOAD_RESULT" then
+        or event == "ITEM_DATA_LOAD_RESULT"
+        or event == "START_AUTOREPEAT_SPELL"
+        or event == "STOP_AUTOREPEAT_SPELL"
+        or event == "PLAYER_ENTER_COMBAT"
+        or event == "PLAYER_LEAVE_COMBAT"
+        or event == "TRADE_SKILL_SHOW"
+        or event == "TRADE_SKILL_CLOSE"
+        or event == "PLAYER_EQUIPMENT_CHANGED" then
         UpdateAllButtonVisuals()
     end
 end)

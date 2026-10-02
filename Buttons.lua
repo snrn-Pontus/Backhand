@@ -157,6 +157,127 @@ local function UpdateUsableTint(button, hasAction)
     end
 end
 
+-- Checked, flashing and equipped states, as ActionBarActionButtonMixin's
+-- UpdateState, UpdateFlash and Update (green Border) set them. These may be
+-- secret in combat; a secret answer cannot be tested, so it counts as off
+-- like an untinted icon above.
+local FLASH_INTERVAL = ATTACK_BUTTON_FLASH_TIME or 0.4
+
+local function IsReadableTrue(value)
+    return not IsSecret(value) and value ~= nil and value ~= false
+end
+
+local function CallQuery(namespace, name, globalName, arg)
+    local func = namespace and namespace[name]
+    if type(func) ~= "function" then
+        func = globalName and _G[globalName]
+    end
+    if type(func) ~= "function" then
+        return false
+    end
+    return IsReadableTrue(SafeCall(func, arg))
+end
+
+local function GetNativeActionState(slot)
+    local current = CallQuery(C_ActionBar, "IsCurrentAction", "IsCurrentAction", slot)
+    local autoRepeat = CallQuery(C_ActionBar, "IsAutoRepeatAction", "IsAutoRepeatAction", slot)
+    local checked = (current or autoRepeat)
+        and not CallQuery(C_ActionBar, "IsAutoCastPetAction", "IsAutoCastPetAction", slot)
+    local flashing = (current and CallQuery(C_ActionBar, "IsAttackAction", "IsAttackAction", slot)) or autoRepeat
+    return checked, flashing, CallQuery(C_ActionBar, "IsEquippedAction", "IsEquippedAction", slot)
+end
+
+local function GetFallbackSpellState(spellID)
+    local current = CallQuery(C_Spell, "IsCurrentSpell", "IsCurrentSpell", spellID)
+    local autoRepeat = CallQuery(C_Spell, "IsAutoRepeatSpell", nil, spellID)
+    local flashing = (current and CallQuery(C_Spell, "IsAutoAttackSpell", nil, spellID)) or autoRepeat
+    return current or autoRepeat, flashing, false
+end
+
+local function GetFallbackItemState(item)
+    return CallQuery(C_Item, "IsCurrentItem", "IsCurrentItem", item), false,
+        CallQuery(C_Item, "IsEquippedItem", "IsEquippedItem", item)
+end
+
+local function GetFallbackActionState(action)
+    if not action then
+        return false, false, false
+    end
+
+    if action.kind == "spell" then
+        return GetFallbackSpellState(action.id)
+    elseif action.kind == "item" then
+        return GetFallbackItemState(action.id)
+    elseif action.kind == "macro" then
+        -- A macro shows the state of the spell or item it currently casts.
+        local spellID = type(GetMacroSpell) == "function" and SafeCall(GetMacroSpell, action.id) or nil
+        if type(spellID) == "number" and not IsSecret(spellID) then
+            return GetFallbackSpellState(spellID)
+        end
+        if type(GetMacroItem) == "function" then
+            local itemName, itemLink = SafeCall(GetMacroItem, action.id)
+            local item = itemLink or itemName
+            if type(item) == "string" and not IsSecret(item) then
+                return GetFallbackItemState(item)
+            end
+        end
+    end
+
+    return false, false, false
+end
+
+local function SetFlashing(button, flashing)
+    flashing = flashing == true
+    if button.flashing == flashing then
+        return
+    end
+    button.flashing = flashing
+    -- Like StartFlash: the first tick shows the flash right away.
+    button.flashTime = 0
+    if not flashing then
+        button.visual.flash:Hide()
+    end
+end
+
+local function UpdateActionState(button)
+    local visual = button.visual
+    local checked, flashing, equipped = false, false, false
+    if button.hasAction then
+        if button.actionSlot then
+            checked, flashing, equipped = GetNativeActionState(button.actionSlot)
+        else
+            checked, flashing, equipped = GetFallbackActionState(button.actionData)
+        end
+    end
+
+    visual.checked:SetShown(checked and visual.checked.artAvailable)
+    visual.equippedBorder:SetShown(equipped and visual.equippedBorder.artAvailable)
+    SetFlashing(button, flashing and visual.flash.artAvailable)
+end
+
+-- Auto Attack and Auto Shot blink at ATTACK_BUTTON_FLASH_TIME, like
+-- ActionBarActionButtonMixin:OnUpdate. Driven by the addon's OnUpdate.
+local function UpdateActionFlashes(elapsed)
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button and button.flashing then
+                local flashTime = button.flashTime - elapsed
+                if flashTime <= 0 then
+                    local overtime = -flashTime
+                    if overtime >= FLASH_INTERVAL then
+                        overtime = 0
+                    end
+                    flashTime = FLASH_INTERVAL - overtime
+                    local flash = button.visual.flash
+                    flash:SetShown(not flash:IsShown())
+                end
+                button.flashTime = flashTime
+            end
+        end
+    end
+end
+
 -- Range feedback is polled with IsActionInRange instead of asking the client
 -- to push ACTION_RANGE_CHECK_UPDATE for our slots: on Forever build 69913,
 -- C_ActionBar.EnableActionRangeCheck trips a client assert (a hard crash that
@@ -623,6 +744,7 @@ local function UpdateButtonVisual(button)
     end
 
     UpdateUsableTint(button, hasAction)
+    UpdateActionState(button)
 
     local count
     if button.actionSlot and hasAction then
@@ -936,6 +1058,8 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     button.paddleIndex = paddleIndex
     button.pushed = false
     button.hasAction = false
+    button.flashing = false
+    button.flashTime = 0
     button:SetSize(LAYOUT.BUTTON_SIZE_EXPANDED, LAYOUT.BUTTON_SIZE_EXPANDED)
     button:SetFrameLevel(panel:GetFrameLevel() + 10)
     button:RegisterForClicks("AnyUp", "AnyDown")
@@ -985,6 +1109,15 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     visual.emptyGlyph.artAvailable = true
     visual.emptyGlyph:SetAlpha(0.9)
 
+    -- Auto Attack / Auto Shot flash, masked to the icon like the native Flash.
+    visual.flash = visual:CreateTexture(nil, "ARTWORK", nil, 0)
+    visual.flash:SetAllPoints()
+    ApplyArt(visual.flash, ATLAS.flash, nil)
+    if visual.iconMask then
+        visual.flash:AddMaskTexture(visual.iconMask)
+    end
+    visual.flash:Hide()
+
     visual.cooldown = CreateFrame("Cooldown", nil, visual, "CooldownFrameTemplate")
     visual.cooldown:SetPoint("TOPLEFT", 3, -3)
     visual.cooldown:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -1007,6 +1140,20 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     visual.borderPressed:SetAllPoints()
     ApplyArt(visual.borderPressed, ATLAS.borderPressed, GetMedia("PressedOverlay"))
     visual.borderPressed:Hide()
+
+    -- Active (current or auto-repeating) action, like the native CheckedTexture.
+    visual.checked = visual:CreateTexture(nil, "ARTWORK", nil, 2)
+    visual.checked:SetPoint("TOPLEFT", -LAYOUT.CHECKED_DISTANCE, LAYOUT.CHECKED_DISTANCE)
+    visual.checked:SetPoint("BOTTOMRIGHT", LAYOUT.CHECKED_DISTANCE, -LAYOUT.CHECKED_DISTANCE)
+    ApplyArt(visual.checked, ATLAS.borderChecked, GetMedia("SlotHighlight"))
+    visual.checked:Hide()
+
+    -- Equipped items get the native green icon frame border.
+    visual.equippedBorder = visual:CreateTexture(nil, "OVERLAY", nil, -1)
+    visual.equippedBorder:SetAllPoints()
+    ApplyArt(visual.equippedBorder, ATLAS.iconFrameBorder, GetMedia("SlotRing"))
+    visual.equippedBorder:SetVertexColor(0, 1.0, 0, 0.5)
+    visual.equippedBorder:Hide()
 
     visual.highlight = visual:CreateTexture(nil, "OVERLAY", nil, 0)
     visual.highlight:SetAllPoints()
@@ -1093,6 +1240,7 @@ end
 ns.UpdateRangeIndicator = UpdateRangeIndicator
 ns.UpdatePromptVisibility = UpdatePromptVisibility
 ns.UpdateButtonVisual = UpdateButtonVisual
+ns.UpdateActionFlashes = UpdateActionFlashes
 ns.OnSpellAlertEvent = OnSpellAlertEvent
 ns.GetSpellAlertDiagnosticLines = GetSpellAlertDiagnosticLines
 ns.SetSpellAlertTest = SetSpellAlertTest
