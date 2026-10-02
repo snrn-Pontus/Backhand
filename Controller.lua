@@ -113,7 +113,14 @@ local function RefreshControllerProfile()
         labelStyle = known.labelStyle,
     }
 
-    if (not previous or previous.key ~= key) and ns.RefreshSettingsKeyRows then
+    -- The Settings button shows the mode as well as the profile ("Auto (Xbox
+    -- Elite)"), so switching between Auto and a manual setting that resolves
+    -- to the same profile must refresh it too.
+    local changed = not previous
+        or previous.key ~= key
+        or previous.manual ~= ns.controllerProfile.manual
+        or previous.detectedKey ~= detectedKey
+    if changed and ns.RefreshSettingsKeyRows then
         ns.RefreshSettingsKeyRows()
     end
     return ns.controllerProfile
