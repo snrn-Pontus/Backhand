@@ -23,6 +23,7 @@ local UpdateEditOverlays = ns.UpdateEditOverlays
 local InitializeNativeStorage = ns.InitializeNativeStorage
 local UpdateRangeIndicator = ns.UpdateRangeIndicator
 local UpdateButtonVisual = ns.UpdateButtonVisual
+local OnSpellAlertEvent = ns.OnSpellAlertEvent
 local ClearButtonAction = ns.ClearButtonAction
 local UpdateFocusFades = ns.UpdateFocusFades
 local UpdatePanelVisualState = ns.UpdatePanelVisualState
@@ -305,6 +306,8 @@ addon:RegisterEvent("ACTIONBAR_UPDATE_STATE")
 addon:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
 addon:RegisterEvent("SPELL_UPDATE_USABLE")
 addon:RegisterEvent("ACTION_RANGE_CHECK_UPDATE")
+addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
+addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE")
 addon:RegisterEvent("UPDATE_MACROS")
 addon:RegisterEvent("SPELL_UPDATE_COOLDOWN")
 addon:RegisterEvent("BAG_UPDATE_COOLDOWN")
@@ -437,6 +440,11 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
                 end
             end)
         end
+        return
+    end
+
+    if event == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW" or event == "SPELL_ACTIVATION_OVERLAY_GLOW_HIDE" then
+        OnSpellAlertEvent(arg1, event == "SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
         return
     end
 

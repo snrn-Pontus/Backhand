@@ -203,6 +203,120 @@ local function UpdateRangeIndicator(button, checksRange, inRange)
     end
 end
 
+-- The spell behind a slot, as the native button resolves it for spell alerts
+-- (ActionBarActionButtonMixin:UpdateSpellAlert): the spell itself, or the
+-- spell a macro currently casts. Secret answers are treated as no spell.
+local function GetButtonSpellID(button)
+    if not button.hasAction then
+        return nil
+    end
+
+    local spellID
+    if button.actionSlot then
+        local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
+        if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
+            return nil
+        end
+        if actionType == "spell" or (actionType == "macro" and subType == "spell") then
+            spellID = id
+        end
+    else
+        local action = button.actionData
+        if action and action.kind == "spell" then
+            spellID = action.id
+        elseif action and action.kind == "macro" and type(GetMacroSpell) == "function" then
+            spellID = SafeCall(GetMacroSpell, action.id)
+        end
+    end
+
+    if IsSecret(spellID) or type(spellID) ~= "number" then
+        return nil
+    end
+    return spellID
+end
+
+-- Native spell alerts are sized 1.4x the button (ActionButtonSpellAlerts.lua).
+local SPELL_ALERT_SCALE = 1.4
+
+-- Uses the same template and animations as the native action buttons, but on
+-- our own frame instead of through ActionButtonSpellAlertManager, so no
+-- Blizzard state is written from addon code.
+local function GetSpellAlertFrame(button)
+    local visual = button.visual
+    if visual.spellAlert or visual.spellAlertUnavailable then
+        return visual.spellAlert
+    end
+
+    local ok, frame = pcall(CreateFrame, "Frame", nil, visual, "ActionButtonSpellAlertTemplate")
+    if not ok or not frame or not frame.ProcStartAnim or not frame.ProcLoop then
+        visual.spellAlertUnavailable = true
+        return nil
+    end
+
+    frame:SetPoint("CENTER")
+    local width, height = visual:GetSize()
+    frame:SetSize(width * SPELL_ALERT_SCALE, height * SPELL_ALERT_SCALE)
+    frame:SetFrameLevel(visual.cooldown:GetFrameLevel() + 1)
+    visual.spellAlert = frame
+    return frame
+end
+
+local function SetSpellAlertShown(button, shown)
+    local frame = shown and GetSpellAlertFrame(button) or button.visual.spellAlert
+    if not frame then
+        return
+    end
+
+    if not shown then
+        if button.spellAlertShown then
+            frame:Hide()
+            frame.ProcStartAnim:Stop()
+            frame.ProcLoop:Stop()
+            button.spellAlertShown = false
+        end
+        return
+    end
+
+    if not button.spellAlertShown then
+        button.spellAlertShown = true
+        frame:Show()
+        frame.ProcStartAnim:Play()
+    elseif not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
+        -- The loop stops while the panel is hidden; resume it without the
+        -- birth animation, like ShowAlert with skipBirth.
+        frame.ProcLoop:Play()
+    end
+end
+
+local function UpdateSpellAlert(button)
+    local spellID = GetButtonSpellID(button)
+    local shown = false
+    if spellID and C_SpellActivationOverlay then
+        shown = SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
+        if IsSecret(shown) then
+            shown = button.spellAlertShown
+        end
+    end
+    SetSpellAlertShown(button, shown == true)
+end
+
+-- SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, matched against each slot's
+-- spell like the native OnEvent does.
+local function OnSpellAlertEvent(spellID, shown)
+    for panelIndex = 1, PANEL_COUNT do
+        for paddleIndex = 1, PADDLE_COUNT do
+            local button = buttons[panelIndex] and buttons[panelIndex][paddleIndex]
+            if button then
+                if IsSecret(spellID) then
+                    UpdateSpellAlert(button)
+                elseif GetButtonSpellID(button) == spellID then
+                    SetSpellAlertShown(button, shown)
+                end
+            end
+        end
+    end
+end
+
 local function ShouldShowPrompts()
     return BackhandDB.showPaddleBadges ~= false and GetNativeCVarBool(NATIVE_CVAR_PROMPTS, true)
 end
@@ -271,6 +385,7 @@ local function UpdateButtonVisual(button)
     if not hasAction then
         UpdateRangeIndicator(button, false, false)
     end
+    UpdateSpellAlert(button)
     UpdatePromptVisibility(button)
 end
 
@@ -521,6 +636,9 @@ local function LayoutButtonVisual(button)
     visual:ClearAllPoints()
     visual:SetPoint("CENTER", panel, "CENTER", x, y)
     visual.emptyGlyph:SetSize(size * LAYOUT.EMPTY_GLYPH_RATIO, size * LAYOUT.EMPTY_GLYPH_RATIO)
+    if visual.spellAlert then
+        visual.spellAlert:SetSize(size * SPELL_ALERT_SCALE, size * SPELL_ALERT_SCALE)
+    end
 
     local shadowDistance = expanded and LAYOUT.SHADOW_DISTANCE_EXPANDED or LAYOUT.SHADOW_DISTANCE_COLLAPSED
     for _, shadow in ipairs({ visual.shadow, visual.shadowFocus }) do
@@ -708,6 +826,7 @@ end
 ns.UpdateRangeIndicator = UpdateRangeIndicator
 ns.UpdatePromptVisibility = UpdatePromptVisibility
 ns.UpdateButtonVisual = UpdateButtonVisual
+ns.OnSpellAlertEvent = OnSpellAlertEvent
 ns.ClearButtonAction = ClearButtonAction
 ns.GetButtonCenter = GetButtonCenter
 ns.LayoutButtonVisual = LayoutButtonVisual
