@@ -1,8 +1,9 @@
 # Backhand changelog
 
-## Unreleased
+## 0.8.2 — Proc glow
 
 - **Proc glow on paddle slots.** When a proc lights up a spell (spell activation overlay), the paddle slot holding that spell, or a macro that casts it, now shows the same animated glow as the native crossbar buttons. It uses Blizzard's own spell alert template at the native size, follows the slot as the panel expands and collapses, and clears when the proc ends or the slot's action changes. Like the native buttons, only real procs glow: reactive abilities such as Mongoose Bite do not. The glow also works in combat, where the proc state is hidden from addons. One exception: a macro with conditionals (`[mod]`, `[stance]`, `;` alternatives, `/castsequence`) cannot glow while the game hides which spell it is about to cast. Works for native-storage slots and fallback slots. `/backhand glowtest` shows the glow on every filled slot, and `/backhand diag` lists the recent proc events and what each slot resolves to (#8).
+- Backhand is listed under the **SNRN** category in the AddOns list, next to the other SNRN addons.
 
 ## 0.8.1 — Panels collapse in menus
 
