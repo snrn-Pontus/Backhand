@@ -203,26 +203,60 @@ local function UpdateRangeIndicator(button, checksRange, inRange)
     end
 end
 
+-- A macro without conditionals, alternatives or sequences always casts the
+-- same spell. Macros cannot be edited in combat, so its spell can be kept
+-- like a plain spell's.
+local function IsStaticMacroBody(body)
+    if type(body) ~= "string" or IsSecret(body) then
+        return false
+    end
+    local lower = body:lower()
+    return not lower:find("[", 1, true)
+        and not lower:find(";", 1, true)
+        and not lower:find("/castsequence", 1, true)
+        and not lower:find("/castrandom", 1, true)
+        and not lower:find("/userandom", 1, true)
+end
+
+local function GetButtonMacroBody(button)
+    local macroIndex
+    if button.actionSlot then
+        local name = SafeCall(GetActionText, button.actionSlot)
+        if type(name) == "string" and not IsSecret(name) then
+            macroIndex = SafeCall(GetMacroIndexByName, name)
+        end
+    elseif button.actionData then
+        macroIndex = button.actionData.id
+    end
+    if type(macroIndex) ~= "number" or IsSecret(macroIndex) or macroIndex == 0 then
+        return nil
+    end
+    local _, _, body = SafeCall(GetMacroInfo, macroIndex)
+    return body
+end
+
 -- The spell behind a slot, as the native button resolves it for spell alerts
 -- (ActionBarActionButtonMixin:UpdateSpellAlert): the spell itself, or the
 -- spell a macro currently casts. In combat the client may answer with secret
--- values. Slot contents cannot change then, so a plain spell's last readable
--- ID is kept; a macro is not, because its conditionals ([mod], [stance],
--- [@target,harm], ...) can switch the spell it casts mid-fight.
+-- values. Slot contents cannot change then, so the last readable ID of a
+-- plain spell or a macro without conditionals is kept; a conditional macro's
+-- is not, because [mod], [stance], [@target,harm], ... can switch the spell
+-- it casts mid-fight.
 local function GetButtonSpellID(button)
     if not button.hasAction then
         button.spellAlertSpellID = nil
         return nil
     end
 
-    local spellID, isPlainSpell
+    local spellID, isPlainSpell, isMacro
     if button.actionSlot then
         local actionType, id, subType = SafeCall(GetActionInfo, button.actionSlot)
         if IsSecret(actionType) or IsSecret(id) or IsSecret(subType) then
             return button.spellAlertSpellID
         end
         isPlainSpell = actionType == "spell"
-        if isPlainSpell or (actionType == "macro" and subType == "spell") then
+        isMacro = actionType == "macro"
+        if isPlainSpell or (isMacro and subType == "spell") then
             spellID = id
         end
     else
@@ -232,6 +266,7 @@ local function GetButtonSpellID(button)
             isPlainSpell = true
         elseif action and action.kind == "macro" and type(GetMacroSpell) == "function" then
             spellID = SafeCall(GetMacroSpell, action.id)
+            isMacro = true
         end
     end
 
@@ -241,7 +276,8 @@ local function GetButtonSpellID(button)
     if type(spellID) ~= "number" then
         spellID = nil
     end
-    button.spellAlertSpellID = isPlainSpell and spellID or nil
+    local keep = isPlainSpell or (isMacro and spellID ~= nil and IsStaticMacroBody(GetButtonMacroBody(button)))
+    button.spellAlertSpellID = keep and spellID or nil
     return spellID
 end
 
