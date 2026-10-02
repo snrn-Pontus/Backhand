@@ -203,6 +203,23 @@ local function UpdateRangeIndicator(button, checksRange, inRange)
     end
 end
 
+-- Slash commands whose spell changes from cast to cast, in English and in
+-- every localized alias the client registers (SLASH_CASTSEQUENCE1, 2, ...).
+local spellChangingCommands
+local function GetSpellChangingCommands()
+    if not spellChangingCommands then
+        spellChangingCommands = { "/castsequence", "/castrandom", "/userandom" }
+        for _, key in ipairs({ "SLASH_CASTSEQUENCE", "SLASH_CASTRANDOM", "SLASH_USERANDOM" }) do
+            local index = 1
+            while type(_G[key .. index]) == "string" do
+                spellChangingCommands[#spellChangingCommands + 1] = _G[key .. index]:lower()
+                index = index + 1
+            end
+        end
+    end
+    return spellChangingCommands
+end
+
 -- A macro without conditionals, alternatives or sequences always casts the
 -- same spell. Macros cannot be edited in combat, so its spell can be kept
 -- like a plain spell's.
@@ -211,11 +228,15 @@ local function IsStaticMacroBody(body)
         return false
     end
     local lower = body:lower()
-    return not lower:find("[", 1, true)
-        and not lower:find(";", 1, true)
-        and not lower:find("/castsequence", 1, true)
-        and not lower:find("/castrandom", 1, true)
-        and not lower:find("/userandom", 1, true)
+    if lower:find("[", 1, true) or lower:find(";", 1, true) then
+        return false
+    end
+    for _, command in ipairs(GetSpellChangingCommands()) do
+        if lower:find(command, 1, true) then
+            return false
+        end
+    end
+    return true
 end
 
 local function GetButtonMacroBody(button)
