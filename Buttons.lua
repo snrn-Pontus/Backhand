@@ -324,13 +324,10 @@ local function SetSpellAlertShown(button, shown)
 end
 
 -- Proc state reported by SPELL_ACTIVATION_OVERLAY_GLOW_SHOW / _HIDE, keyed by
--- spell ID and by spell name. It takes precedence over IsSpellOverlayed, which
--- may answer with a secret value in combat; the query covers procs that were
--- already active before the addon loaded. The name catches ranked spells
--- (Mongoose Bite and other reactive abilities) when the event reports a
--- different rank than the one on the slot.
+-- spell ID like the native OnEvent matches it. It takes precedence over
+-- IsSpellOverlayed, which may answer with a secret value in combat; the query
+-- covers procs that were already active before the addon loaded.
 local overlayedSpells = {}
-local overlayedNames = {}
 local spellAlertStats = { events = 0, secretEvents = 0, secretQueries = 0, history = {} }
 local SPELL_ALERT_HISTORY_SIZE = 6
 
@@ -354,10 +351,6 @@ local function IsSpellAlertActive(button, spellID)
     if overlayedSpells[spellID] ~= nil then
         return overlayedSpells[spellID]
     end
-    local name = GetSpellName(spellID)
-    if name and overlayedNames[name] ~= nil then
-        return overlayedNames[name]
-    end
     local overlayed = C_SpellActivationOverlay
         and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
     if IsSecret(overlayed) then
@@ -365,7 +358,7 @@ local function IsSpellAlertActive(button, spellID)
         return overlayed
     end
     if overlayed == true then
-        spellAlertStats.lastOverlayed = string.format("%s (%s)", tostring(spellID), tostring(name or "unknown"))
+        spellAlertStats.lastOverlayed = string.format("%s (%s)", tostring(spellID), tostring(GetSpellName(spellID) or "unknown"))
     end
     return overlayed == true
 end
@@ -413,9 +406,6 @@ local function OnSpellAlertEvent(spellID, shown)
             tostring(spellID), tostring(name or "unknown"))
         if type(spellID) == "number" then
             overlayedSpells[spellID] = shown
-        end
-        if name then
-            overlayedNames[name] = shown
         end
     end
     local history = spellAlertStats.history
