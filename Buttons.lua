@@ -267,10 +267,39 @@ local function GetSpellAlertFrame(button)
     return frame
 end
 
+local function ResumeSpellAlertLoop(frame)
+    if not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
+        frame.ProcLoop:Play()
+    end
+end
+
+-- shown may be a secret boolean (IsSpellOverlayed in combat). Addon code
+-- cannot test it, so the glow keeps looping and the client applies it as
+-- the frame's alpha through SetAlphaFromBoolean.
 local function SetSpellAlertShown(button, shown)
+    if IsSecret(shown) then
+        local frame = GetSpellAlertFrame(button)
+        if not frame or type(frame.SetAlphaFromBoolean) ~= "function" then
+            return
+        end
+        frame:SetAlphaFromBoolean(shown, 1, 0)
+        frame:Show()
+        ResumeSpellAlertLoop(frame)
+        button.spellAlertShown = true
+        button.spellAlertSecret = true
+        return
+    end
+
     local frame = shown and GetSpellAlertFrame(button) or button.visual.spellAlert
     if not frame then
         return
+    end
+
+    if button.spellAlertSecret then
+        -- Back to a readable answer: drop the secret alpha. A glow that was
+        -- already looping continues without the birth animation.
+        button.spellAlertSecret = false
+        frame:SetAlpha(1)
     end
 
     if not shown then
@@ -287,10 +316,10 @@ local function SetSpellAlertShown(button, shown)
         button.spellAlertShown = true
         frame:Show()
         frame.ProcStartAnim:Play()
-    elseif not frame.ProcStartAnim:IsPlaying() and not frame.ProcLoop:IsPlaying() then
+    else
         -- The loop stops while the panel is hidden; resume it without the
         -- birth animation, like ShowAlert with skipBirth.
-        frame.ProcLoop:Play()
+        ResumeSpellAlertLoop(frame)
     end
 end
 
@@ -302,7 +331,7 @@ end
 -- different rank than the one on the slot.
 local overlayedSpells = {}
 local overlayedNames = {}
-local spellAlertStats = { events = 0, secretEvents = 0, history = {} }
+local spellAlertStats = { events = 0, secretEvents = 0, secretQueries = 0, history = {} }
 local SPELL_ALERT_HISTORY_SIZE = 6
 
 local function GetSpellName(spellID)
@@ -332,7 +361,11 @@ local function IsSpellAlertActive(button, spellID)
     local overlayed = C_SpellActivationOverlay
         and SafeCall(C_SpellActivationOverlay.IsSpellOverlayed, spellID)
     if IsSecret(overlayed) then
-        return button.spellAlertShown == true
+        spellAlertStats.secretQueries = spellAlertStats.secretQueries + 1
+        return overlayed
+    end
+    if overlayed == true then
+        spellAlertStats.lastOverlayed = string.format("%s (%s)", tostring(spellID), tostring(name or "unknown"))
     end
     return overlayed == true
 end
@@ -405,10 +438,11 @@ local function GetSpellAlertDiagnosticLines()
     local lines = {}
     local template = (C_XMLUtil and C_XMLUtil.GetTemplateInfo
         and SafeCall(C_XMLUtil.GetTemplateInfo, "ActionButtonSpellAlertTemplate")) and "yes" or "unknown"
-    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d)",
+    lines[1] = string.format("Proc glow: %stemplate=%s, IsSpellOverlayed=%s, events=%d (secret %d), secret queries=%d, last overlayed=%s",
         spellAlertTest and "TEST MODE, " or "", template,
         tostring(C_SpellActivationOverlay ~= nil and type(C_SpellActivationOverlay.IsSpellOverlayed) == "function"),
-        spellAlertStats.events, spellAlertStats.secretEvents)
+        spellAlertStats.events, spellAlertStats.secretEvents, spellAlertStats.secretQueries,
+        tostring(spellAlertStats.lastOverlayed or "none"))
     lines[2] = "  Recent proc events (newest first): "
         .. (#spellAlertStats.history > 0 and table.concat(spellAlertStats.history, "; ") or "none")
 
@@ -434,7 +468,7 @@ local function GetSpellAlertDiagnosticLines()
                     tostring(spellID and GetSpellName(spellID) or "-"),
                     IsSecret(overlayed) and "secret" or tostring(overlayed),
                     spellID and tostring(overlayedSpells[spellID]) or "nil",
-                    button.spellAlertShown and "shown" or "hidden",
+                    button.spellAlertSecret and "secret" or (button.spellAlertShown and "shown" or "hidden"),
                     button.visual.spellAlertUnavailable and " (template failed)" or "")
             end
         end
