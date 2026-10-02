@@ -353,6 +353,7 @@ local function StartPaddleLearning(force)
     end
 end
 
+ns.FindRawInputDevice = FindRawInputDevice
 ns.GetPaddleRawMappingDiagnostic = GetPaddleRawMappingDiagnostic
 ns.StopInputWatcher = StopInputWatcher
 ns.ClearLearnedPaddleMapping = ClearLearnedPaddleMapping

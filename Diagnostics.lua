@@ -21,6 +21,7 @@ local GetMappedState = ns.GetMappedState
 local GetPaddleRawMappingDiagnostic = ns.GetPaddleRawMappingDiagnostic
 local GetVisualPanelFromGamepadState = ns.GetVisualPanelFromGamepadState
 local IsNativeCrossbarFocused = ns.IsNativeCrossbarFocused
+local GetControllerDiagnosticLines = ns.GetControllerDiagnosticLines
 local GetSpellAlertDiagnosticLines = ns.GetSpellAlertDiagnosticLines
 
 local function GetMappedDiagnosticValues()
@@ -115,6 +116,11 @@ local function GetDiagnosticLines(separator)
         "Native art: " .. GetNativeArtDiagnostic(),
         "Edit Mode: " .. (ns.editModeActive and "active" or "inactive") .. (ns.editModeCallbacksRegistered and " (listening for EditMode.Enter/Exit)" or " (integration unavailable)"),
     }
+
+    -- Next to the raw paddle mapping, which reads the same device.
+    for offset, line in ipairs(GetControllerDiagnosticLines(separator)) do
+        table.insert(lines, 8 + offset, line)
+    end
 
     if ns.nativeStorageEnabled then
         local values = {}

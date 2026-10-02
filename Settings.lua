@@ -12,6 +12,9 @@ local ApplyAppearance = ns.ApplyAppearance
 local SetUnlocked = ns.SetUnlocked
 local ResetPosition = ns.ResetPosition
 local ShowDiagnosticsFrame = ns.ShowDiagnosticsFrame
+local GetProfileSetting = ns.GetProfileSetting
+local GetProfileChoiceLabel = ns.GetProfileChoiceLabel
+local CycleControllerProfileSetting = ns.CycleControllerProfileSetting
 
 -- Everything lives on one canvas page built from plain widgets. Forever's
 -- vertical-layout settings list hangs the client when the Settings window is
@@ -175,6 +178,18 @@ local function RegisterSettings()
     )
 
     AddSection("Paddle inputs")
+
+    AddButton(
+        "Controller",
+        function()
+            return GetProfileChoiceLabel(GetProfileSetting())
+        end,
+        function()
+            CycleControllerProfileSetting()
+            ns.RefreshSettingsKeyRows()
+        end,
+        "Which paddle controller you use. Auto detects the Xbox Elite and DualSense Edge from the connected controller. Click to step through Auto, Xbox Elite, DualSense Edge and Generic; pick one manually when Steam Input, reWASD or a Bluetooth driver hides the real controller. Changing it never touches your paddle keys or actions."
+    )
 
     for paddleIndex = 1, PADDLE_COUNT do
         AddButton(

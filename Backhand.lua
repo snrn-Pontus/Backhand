@@ -55,6 +55,8 @@ local PrintDiagnostics = ns.PrintDiagnostics
 local ShowDiagnosticsFrame = ns.ShowDiagnosticsFrame
 local RegisterSettings = ns.RegisterSettings
 local OpenSettings = ns.OpenSettings
+local RefreshControllerProfile = ns.RefreshControllerProfile
+local HandleControllerCommand = ns.HandleControllerCommand
 
 local statePollElapsed = 0
 local rangePollElapsed = 0
@@ -165,6 +167,7 @@ local function PrintHelp()
     Print("/backhand guide - open the setup guide (Xbox Accessories / Steam Input steps, live input readout)")
     Print("/backhand assign [1-4] - assign one paddle, or all four in order, by pressing it")
     Print("/backhand keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /backhand keys F13 F14 F15 F16")
+    Print("/backhand controller [auto|elite|edge|generic] - show or set the controller profile")
     Print("/backhand test - print which raw controller buttons fire when you press the paddles")
     Print("/backhand glowtest - toggle the proc glow on every filled slot, to check that it draws")
     Print("/backhand learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
@@ -241,6 +244,8 @@ SlashCmdList.BACKHAND = function(message)
                 Print(string.format("P%d: %s", paddleIndex, GetKeyDisplayName(GetPaddleKey(paddleIndex))))
             end
         end
+    elseif command == "controller" then
+        HandleControllerCommand(args[2])
     elseif command == "glowtest" then
         ns.spellAlertTestEnabled = not ns.spellAlertTestEnabled
         local shown, failed = SetSpellAlertTest(ns.spellAlertTestEnabled)
@@ -326,6 +331,8 @@ addon:RegisterEvent("ITEM_DATA_LOAD_RESULT")
 addon:RegisterEvent("INPUT_DEVICE_INTERFACE_TRANSITION")
 addon:RegisterEvent("GAME_PAD_ACTIVE_CHANGED")
 addon:RegisterEvent("GAME_PAD_CONFIGS_CHANGED")
+addon:RegisterEvent("GAME_PAD_CONNECTED")
+addon:RegisterEvent("GAME_PAD_DISCONNECTED")
 addon:RegisterEvent("CVAR_UPDATE")
 addon:RegisterEvent("GAMEPAD_STANCE_BAR_OVERRIDE_CHANGED")
 addon:RegisterEvent("GAMEPAD_POSSESS_BAR_OVERRIDE_CHANGED")
@@ -338,6 +345,7 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
 
         EnsureDatabase()
         EnsureCharacterDatabase()
+        RefreshControllerProfile()
         InitializeNativeStorage()
         CreateUI()
         RegisterSecureFrameRefs()
@@ -365,6 +373,7 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
             end
         end
         CacheGamepadButtonIndices()
+        RefreshControllerProfile()
         CheckStanceOverlap()
         RegisterEditModeIntegration()
         RegisterNativeModifierCallback()
@@ -397,8 +406,14 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         return
     end
 
+    if event == "GAME_PAD_CONNECTED" or event == "GAME_PAD_DISCONNECTED" then
+        RefreshControllerProfile()
+        return
+    end
+
     if event == "GAME_PAD_ACTIVE_CHANGED" or event == "GAME_PAD_CONFIGS_CHANGED" then
         CacheGamepadButtonIndices()
+        RefreshControllerProfile()
         UpdatePanelVisibility()
         C_Timer.After(0.2, function()
             if not InCombatLockdown() then
