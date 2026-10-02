@@ -210,15 +210,20 @@ local function GetFallbackActionState(action)
         return GetFallbackItemState(action.id)
     elseif action.kind == "macro" then
         -- A macro shows the state of the spell or item it currently casts.
-        local spellID = type(GetMacroSpell) == "function" and SafeCall(GetMacroSpell, action.id) or nil
-        if type(spellID) == "number" and not IsSecret(spellID) then
-            return GetFallbackSpellState(spellID)
+        -- In combat these may be secret, so each value is checked with
+        -- IsSecret before any boolean test.
+        if type(GetMacroSpell) == "function" then
+            local spellID = SafeCall(GetMacroSpell, action.id)
+            if not IsSecret(spellID) and type(spellID) == "number" then
+                return GetFallbackSpellState(spellID)
+            end
         end
         if type(GetMacroItem) == "function" then
             local itemName, itemLink = SafeCall(GetMacroItem, action.id)
-            local item = itemLink or itemName
-            if type(item) == "string" and not IsSecret(item) then
-                return GetFallbackItemState(item)
+            if not IsSecret(itemLink) and type(itemLink) == "string" then
+                return GetFallbackItemState(itemLink)
+            elseif not IsSecret(itemName) and type(itemName) == "string" then
+                return GetFallbackItemState(itemName)
             end
         end
     end
