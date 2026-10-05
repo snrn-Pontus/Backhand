@@ -191,11 +191,19 @@ end
 -- "active" is a plain boolean decided by the client, and the timing values are
 -- forwarded untouched so they may be secret. SetCooldown is the only thing
 -- allowed to look at them, so a rejected call simply clears the swipe.
-local function ApplyCooldown(cooldown, active, startTime, duration, modRate)
+-- When cooldowns are restricted (encounters, PvP) addons may not hand secret
+-- timings to SetCooldown, so a duration object from the matching
+-- Get*Duration API is tried first; it carries the timing without exposing it.
+local function ApplyCooldown(cooldown, active, startTime, duration, modRate, durationObject)
     if IsSecret(active) then
         active = true
     end
     if active then
+        if durationObject ~= nil and cooldown.SetCooldownFromDurationObject then
+            if pcall(cooldown.SetCooldownFromDurationObject, cooldown, durationObject) then
+                return
+            end
+        end
         local ok = pcall(cooldown.SetCooldown, cooldown, startTime, duration, modRate)
         if ok then
             return

@@ -68,28 +68,33 @@ end
 -- Mirrors ActionButton_ApplyCooldown: the red loss-of-control swipe, the
 -- recharge edge of charge spells and the normal swipe, where an active
 -- loss-of-control lockout that outlasts the cooldown hides the other two.
--- Missing infos (older clients, items) clear their widget.
-local function ApplyActionCooldowns(button, cooldownInfo, chargeInfo, lossOfControlInfo)
+-- Missing infos (older clients, items) clear their widget. "durations" holds
+-- the matching duration objects (cooldown, charge, lossOfControl) when the
+-- client has them; see ApplyCooldown.
+local function ApplyActionCooldowns(button, cooldownInfo, chargeInfo, lossOfControlInfo, durations)
     local replaceNormal = type(lossOfControlInfo) == "table"
         and PlainFlag(lossOfControlInfo.shouldReplaceNormalCooldown)
 
     if type(lossOfControlInfo) == "table" then
         ApplyCooldown(button.lossOfControlCooldown, PlainFlag(lossOfControlInfo.isActive),
-            lossOfControlInfo.startTime, lossOfControlInfo.duration, lossOfControlInfo.modRate)
+            lossOfControlInfo.startTime, lossOfControlInfo.duration, lossOfControlInfo.modRate,
+            durations.lossOfControl)
     else
         ClearWidget(button.lossOfControlCooldown)
     end
 
     if type(chargeInfo) == "table" and not replaceNormal then
         ApplyCooldown(button.chargeCooldown, PlainFlag(chargeInfo.isActive),
-            chargeInfo.cooldownStartTime, chargeInfo.cooldownDuration, chargeInfo.chargeModRate)
+            chargeInfo.cooldownStartTime, chargeInfo.cooldownDuration, chargeInfo.chargeModRate,
+            durations.charge)
     else
         ClearWidget(button.chargeCooldown)
     end
 
     if type(cooldownInfo) == "table" and not replaceNormal then
         ApplyCooldown(button.cooldown, CooldownInfoActive(cooldownInfo),
-            cooldownInfo.startTime, cooldownInfo.duration, cooldownInfo.modRate)
+            cooldownInfo.startTime, cooldownInfo.duration, cooldownInfo.modRate,
+            durations.cooldown)
     else
         ClearWidget(button.cooldown)
     end
@@ -132,7 +137,12 @@ local function UpdateFallbackCooldown(button)
         ApplyActionCooldowns(button,
             SafeCall(C_Spell.GetSpellCooldown, action.id),
             SafeCall(C_Spell.GetSpellCharges, action.id),
-            SafeCall(C_Spell.GetSpellLossOfControlCooldownInfo, action.id))
+            SafeCall(C_Spell.GetSpellLossOfControlCooldownInfo, action.id),
+            {
+                cooldown = SafeCall(C_Spell.GetSpellCooldownDuration, action.id),
+                charge = SafeCall(C_Spell.GetSpellChargeDuration, action.id),
+                lossOfControl = SafeCall(C_Spell.GetSpellLossOfControlCooldownDuration, action.id),
+            })
     elseif action.kind == "item" and C_Item and C_Item.GetItemCooldown then
         local startTime, duration, enabled = SafeCall(C_Item.GetItemCooldown, action.id)
         ApplyCooldown(button.cooldown, LegacyCooldownActive(startTime, duration, enabled), startTime, duration)
@@ -157,7 +167,12 @@ local function UpdateNativeCooldown(button)
     if type(info) == "table" then
         ApplyActionCooldowns(button, info,
             SafeCall(C_ActionBar.GetActionCharges, slot),
-            SafeCall(C_ActionBar.GetActionLossOfControlCooldownInfo, slot))
+            SafeCall(C_ActionBar.GetActionLossOfControlCooldownInfo, slot),
+            {
+                cooldown = SafeCall(C_ActionBar.GetActionCooldownDuration, slot),
+                charge = SafeCall(C_ActionBar.GetActionChargeDuration, slot),
+                lossOfControl = SafeCall(C_ActionBar.GetActionLossOfControlCooldownDuration, slot),
+            })
         return
     end
 
