@@ -32,11 +32,71 @@ local GRID_CELLS = {
     [4] = { col = 1, row = 1 },
 }
 
-local function ClearCooldown(button)
-    if button.cooldown.Clear then
-        button.cooldown:Clear()
+local function ClearWidget(cooldown)
+    if cooldown.Clear then
+        cooldown:Clear()
     else
-        button.cooldown:SetCooldown(0, 0)
+        cooldown:SetCooldown(0, 0)
+    end
+end
+
+local function ClearCooldown(button)
+    ClearWidget(button.cooldown)
+    ClearWidget(button.chargeCooldown)
+    ClearWidget(button.lossOfControlCooldown)
+end
+
+-- Reads a "should replace" or "is active" flag that the API marks NeverSecret;
+-- a secret value anyway counts as not set rather than raising an error.
+local function PlainFlag(value)
+    if IsSecret(value) then
+        return false
+    end
+    return value == true
+end
+
+-- Picks the "active" flag of a SpellCooldownInfo, falling back to the legacy
+-- triple on clients that do not report isActive.
+local function CooldownInfoActive(info)
+    local active = info.isActive
+    if not IsSecret(active) and active == nil then
+        active = LegacyCooldownActive(info.startTime, info.duration, info.isEnabled)
+    end
+    return active
+end
+
+-- Mirrors ActionButton_ApplyCooldown: the red loss-of-control swipe, the
+-- recharge edge of charge spells and the normal swipe, where an active
+-- loss-of-control lockout that outlasts the cooldown hides the other two.
+-- Missing infos (older clients, items) clear their widget. "durations" holds
+-- the matching duration objects (cooldown, charge, lossOfControl) when the
+-- client has them; see ApplyCooldown.
+local function ApplyActionCooldowns(button, cooldownInfo, chargeInfo, lossOfControlInfo, durations)
+    local replaceNormal = type(lossOfControlInfo) == "table"
+        and PlainFlag(lossOfControlInfo.shouldReplaceNormalCooldown)
+
+    if type(lossOfControlInfo) == "table" then
+        ApplyCooldown(button.lossOfControlCooldown, PlainFlag(lossOfControlInfo.isActive),
+            lossOfControlInfo.startTime, lossOfControlInfo.duration, lossOfControlInfo.modRate,
+            durations.lossOfControl)
+    else
+        ClearWidget(button.lossOfControlCooldown)
+    end
+
+    if type(chargeInfo) == "table" and not replaceNormal then
+        ApplyCooldown(button.chargeCooldown, PlainFlag(chargeInfo.isActive),
+            chargeInfo.cooldownStartTime, chargeInfo.cooldownDuration, chargeInfo.chargeModRate,
+            durations.charge)
+    else
+        ClearWidget(button.chargeCooldown)
+    end
+
+    if type(cooldownInfo) == "table" and not replaceNormal then
+        ApplyCooldown(button.cooldown, CooldownInfoActive(cooldownInfo),
+            cooldownInfo.startTime, cooldownInfo.duration, cooldownInfo.modRate,
+            durations.cooldown)
+    else
+        ClearWidget(button.cooldown)
     end
 end
 
@@ -74,19 +134,20 @@ local function UpdateFallbackCooldown(button)
     end
 
     if action.kind == "spell" and C_Spell and C_Spell.GetSpellCooldown then
-        local info = SafeCall(C_Spell.GetSpellCooldown, action.id)
-        if type(info) == "table" then
-            local active = info.isActive
-            if not IsSecret(active) and active == nil then
-                active = LegacyCooldownActive(info.startTime, info.duration, info.isEnabled)
-            end
-            ApplyCooldown(button.cooldown, active, info.startTime, info.duration, info.modRate)
-        else
-            ClearCooldown(button)
-        end
+        ApplyActionCooldowns(button,
+            SafeCall(C_Spell.GetSpellCooldown, action.id),
+            SafeCall(C_Spell.GetSpellCharges, action.id),
+            SafeCall(C_Spell.GetSpellLossOfControlCooldownInfo, action.id),
+            {
+                cooldown = SafeCall(C_Spell.GetSpellCooldownDuration, action.id),
+                charge = SafeCall(C_Spell.GetSpellChargeDuration, action.id),
+                lossOfControl = SafeCall(C_Spell.GetSpellLossOfControlCooldownDuration, action.id),
+            })
     elseif action.kind == "item" and C_Item and C_Item.GetItemCooldown then
         local startTime, duration, enabled = SafeCall(C_Item.GetItemCooldown, action.id)
         ApplyCooldown(button.cooldown, LegacyCooldownActive(startTime, duration, enabled), startTime, duration)
+        ClearWidget(button.chargeCooldown)
+        ClearWidget(button.lossOfControlCooldown)
     else
         ClearCooldown(button)
     end
@@ -99,21 +160,26 @@ local function UpdateNativeCooldown(button)
         return
     end
 
-    -- Mirrors ActionButton_ApplyCooldown: the client's isActive flag decides
-    -- whether a swipe is shown, and the (possibly secret) timing values are
-    -- handed to the Cooldown widget without being inspected.
+    -- Mirrors ActionButton_UpdateCooldown: the client's isActive flags decide
+    -- which swipes are shown, and the (possibly secret) timing values are
+    -- handed to the Cooldown widgets without being inspected.
     local info = C_ActionBar.GetActionCooldown and SafeCall(C_ActionBar.GetActionCooldown, slot) or nil
     if type(info) == "table" then
-        local active = info.isActive
-        if not IsSecret(active) and active == nil then
-            active = LegacyCooldownActive(info.startTime, info.duration, info.isEnabled)
-        end
-        ApplyCooldown(button.cooldown, active, info.startTime, info.duration, info.modRate)
+        ApplyActionCooldowns(button, info,
+            SafeCall(C_ActionBar.GetActionCharges, slot),
+            SafeCall(C_ActionBar.GetActionLossOfControlCooldownInfo, slot),
+            {
+                cooldown = SafeCall(C_ActionBar.GetActionCooldownDuration, slot),
+                charge = SafeCall(C_ActionBar.GetActionChargeDuration, slot),
+                lossOfControl = SafeCall(C_ActionBar.GetActionLossOfControlCooldownDuration, slot),
+            })
         return
     end
 
     local startTime, duration, enable, modRate = SafeCall(GetActionCooldown, slot)
     ApplyCooldown(button.cooldown, LegacyCooldownActive(startTime, duration, enable), startTime, duration, modRate)
+    ClearWidget(button.chargeCooldown)
+    ClearWidget(button.lossOfControlCooldown)
 end
 
 -- Native action buttons tint the icon when the action cannot be used
@@ -760,15 +826,17 @@ local function UpdateButtonVisual(button)
         end
     elseif button.actionData and button.actionData.kind == "item" and C_Item and type(C_Item.GetItemCount) == "function" then
         count = SafeCall(C_Item.GetItemCount, button.actionData.id)
+    elseif button.actionData and button.actionData.kind == "spell" and C_Spell then
+        -- Charges or use count, the same text GetActionDisplayCount gives.
+        count = SafeCall(C_Spell.GetSpellDisplayCount, button.actionData.id)
     end
-    if IsSecret(count) then
-        -- GetActionDisplayCount already returns display-ready text; the native
-        -- buttons pass it straight to SetText, which accepts secret values.
+    if IsSecret(count) or type(count) == "string" then
+        -- GetActionDisplayCount and GetSpellDisplayCount already return
+        -- display-ready text (including "0" or "1" charges); the native buttons
+        -- pass it straight to SetText, which accepts secret values.
         visual.count:SetText(count)
     else
         if type(count) == "number" and count <= 1 then
-            count = nil
-        elseif count == "" or count == "0" or count == "1" then
             count = nil
         end
         visual.count:SetText(count and tostring(count) or "")
@@ -1137,6 +1205,39 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
         visual.cooldown:SetDrawEdge(false)
     end
 
+    -- Red lockout swipe while stunned, silenced or school-locked, like the
+    -- native lossOfControlCooldown (round swipe to match the icon mask).
+    visual.lossOfControlCooldown = CreateFrame("Cooldown", nil, visual, "CooldownFrameTemplate")
+    visual.lossOfControlCooldown:SetPoint("TOPLEFT", 3, -3)
+    visual.lossOfControlCooldown:SetPoint("BOTTOMRIGHT", -3, 3)
+    visual.lossOfControlCooldown:SetFrameLevel(visual.cooldown:GetFrameLevel())
+    if visual.lossOfControlCooldown.SetSwipeTexture then
+        visual.lossOfControlCooldown:SetSwipeTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+        visual.lossOfControlCooldown:SetSwipeColor(0.17, 0, 0, 0.64)
+    end
+    if visual.lossOfControlCooldown.SetEdgeTexture then
+        visual.lossOfControlCooldown:SetEdgeTexture("Interface\\Cooldown\\UI-HUD-ActionBar-LoC")
+    end
+    if visual.lossOfControlCooldown.SetDrawBling then
+        visual.lossOfControlCooldown:SetDrawBling(false)
+    end
+    if visual.lossOfControlCooldown.SetHideCountdownNumbers then
+        visual.lossOfControlCooldown:SetHideCountdownNumbers(true)
+    end
+
+    -- Recharge edge for charge spells: no swipe, only the moving edge, like
+    -- the native chargeCooldown.
+    visual.chargeCooldown = CreateFrame("Cooldown", nil, visual, "CooldownFrameTemplate")
+    visual.chargeCooldown:SetPoint("TOPLEFT", 2, -2)
+    visual.chargeCooldown:SetPoint("BOTTOMRIGHT", -2, 2)
+    visual.chargeCooldown:SetFrameLevel(visual.cooldown:GetFrameLevel())
+    if visual.chargeCooldown.SetDrawSwipe then
+        visual.chargeCooldown:SetDrawSwipe(false)
+    end
+    if visual.chargeCooldown.SetHideCountdownNumbers then
+        visual.chargeCooldown:SetHideCountdownNumbers(true)
+    end
+
     visual.border = visual:CreateTexture(nil, "ARTWORK", nil, 1)
     visual.border:SetAllPoints()
     ApplyArt(visual.border, ATLAS.border, GetMedia("SlotRing"))
@@ -1185,6 +1286,8 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     -- Aliases used by the shared cooldown helpers.
     button.icon = visual.icon
     button.cooldown = visual.cooldown
+    button.chargeCooldown = visual.chargeCooldown
+    button.lossOfControlCooldown = visual.lossOfControlCooldown
     button.count = visual.count
 
     button:SetScript("OnEnter", ShowTooltip)
