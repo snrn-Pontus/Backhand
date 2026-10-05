@@ -81,6 +81,9 @@ Open WoW's normal Edit Mode and the four panels become draggable, or tick **Unlo
 ## Part of the SNRN family
 
 - **[SNRN Rummage](https://www.curseforge.com/wow/addons/snrn-rummage)**: one action slot per item type that always uses the best food, drink, potion, bandage or quest item in your bags. Put its macros on your paddles and never swap consumables by hand again.
+- **[SNRN Tally](https://www.curseforge.com/wow/addons/snrn-tally-bag-ammo-counter)**: free bag slots and ammo on Forever's gamepad HUD, which shows neither.
+- **[SNRN Valet](https://www.curseforge.com/wow/addons/snrn-valet)**: sells greys and repairs at merchants, collects your mail, and declines duels, guild invites and charters, so there are fewer popups to chase with the gamepad cursor.
+- **[SNRN Grimoire](https://www.curseforge.com/wow/addons/snrn-grimoire)**: one command lays out an Affliction Warlock on Forever's crossbar and fills all sixteen paddle slots.
 
 ## Reporting problems
 
