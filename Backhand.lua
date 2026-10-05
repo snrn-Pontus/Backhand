@@ -327,6 +327,9 @@ addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_SHOW")
 addon:RegisterEvent("SPELL_ACTIVATION_OVERLAY_GLOW_HIDE")
 addon:RegisterEvent("UPDATE_MACROS")
 addon:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+addon:RegisterEvent("SPELL_UPDATE_CHARGES")
+addon:RegisterUnitEvent("LOSS_OF_CONTROL_ADDED", "player")
+addon:RegisterUnitEvent("LOSS_OF_CONTROL_UPDATE", "player")
 addon:RegisterEvent("BAG_UPDATE_COOLDOWN")
 addon:RegisterEvent("BAG_UPDATE_DELAYED")
 addon:RegisterEvent("ITEM_DATA_LOAD_RESULT")
@@ -504,6 +507,9 @@ addon:SetScript("OnEvent", function(_, event, arg1, arg2, arg3)
         or event == "ACTIONBAR_UPDATE_USABLE"
         or event == "SPELL_UPDATE_USABLE"
         or event == "SPELL_UPDATE_COOLDOWN"
+        or event == "SPELL_UPDATE_CHARGES"
+        or event == "LOSS_OF_CONTROL_ADDED"
+        or event == "LOSS_OF_CONTROL_UPDATE"
         or event == "BAG_UPDATE_COOLDOWN"
         or event == "BAG_UPDATE_DELAYED"
         or event == "ITEM_DATA_LOAD_RESULT"
