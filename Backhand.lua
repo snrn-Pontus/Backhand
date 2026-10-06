@@ -58,6 +58,9 @@ local RegisterSettings = ns.RegisterSettings
 local OpenSettings = ns.OpenSettings
 local RefreshControllerProfile = ns.RefreshControllerProfile
 local HandleControllerCommand = ns.HandleControllerCommand
+local GetPaddleBehavior = ns.GetPaddleBehavior
+local ParsePaddleBehavior = ns.ParsePaddleBehavior
+local SetPaddleBehavior = ns.SetPaddleBehavior
 
 local statePollElapsed = 0
 local rangePollElapsed = 0
@@ -157,6 +160,34 @@ local function ClearSlot(panelArg, paddleArg)
     Print(string.format("Cleared %s P%d.", PANELS[panelIndex].label, paddleIndex))
 end
 
+-- /backhand paddle [1-4] [actions|prev|next|page <n>]
+local function HandlePaddleCommand(paddleArg, behaviorArg, pageArg)
+    local paddleIndex = tonumber(paddleArg)
+    if paddleArg and (not paddleIndex or paddleIndex ~= math.floor(paddleIndex)
+        or paddleIndex < 1 or paddleIndex > PADDLE_COUNT) then
+        Print(string.format("Usage: /backhand paddle [1-4] [actions|prev|next|page <1-%d>]", ns.PAGE_COUNT))
+        return
+    end
+
+    if paddleIndex and behaviorArg then
+        local value = ParsePaddleBehavior(behaviorArg, pageArg)
+        if not value then
+            Print(string.format("Usage: /backhand paddle [1-4] [actions|prev|next|page <1-%d>]", ns.PAGE_COUNT))
+            return
+        end
+        SetPaddleBehavior(paddleIndex, value)
+        if InCombatLockdown() then
+            Print("The new paddle behavior applies after combat.")
+        end
+    end
+
+    for index = 1, PADDLE_COUNT do
+        if not paddleIndex or index == paddleIndex then
+            Print(string.format("P%d: %s", index, GetPaddleBehavior(index).label))
+        end
+    end
+end
+
 local function PrintHelp()
     Print("Commands (the old /paddles works the same as /backhand):")
     Print("/backhand unlock - move panels outside WoW Edit Mode")
@@ -170,6 +201,7 @@ local function PrintHelp()
     Print("/backhand assign [1-4] - assign one paddle, or all four in order, by pressing it")
     Print("/backhand keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /backhand keys F13 F14 F15 F16")
     Print("/backhand controller [auto|elite|edge|generic] - show or set the controller profile")
+    Print("/backhand paddle [1-4] [actions|prev|next|page <n>] - show or set what a paddle does: its actions, or action-bar paging")
     Print("/backhand test - print which raw controller buttons fire when you press the paddles")
     Print("/backhand glowtest - toggle the proc glow on every filled slot, to check that it draws")
     Print("/backhand learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
@@ -246,6 +278,8 @@ SlashCmdList.BACKHAND = function(message)
                 Print(string.format("P%d: %s", paddleIndex, GetKeyDisplayName(GetPaddleKey(paddleIndex))))
             end
         end
+    elseif command == "paddle" or command == "behavior" then
+        HandlePaddleCommand(args[2], args[3], args[4])
     elseif command == "controller" then
         HandleControllerCommand(args[2])
     elseif command == "glowtest" then

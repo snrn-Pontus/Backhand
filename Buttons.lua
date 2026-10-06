@@ -23,6 +23,8 @@ local ApplyArt = ns.ApplyArt
 local GetNativeCVarBool = ns.GetNativeCVarBool
 local IsEditable = ns.IsEditable
 local GetNativeSlot = ns.GetNativeSlot
+local GetPaddleBehavior = ns.GetPaddleBehavior
+local GetPaddleBehaviorGlyph = ns.GetPaddleBehaviorGlyph
 
 -- Reading order: P1 and P2 on the top row, P3 and P4 on the bottom row.
 local GRID_CELLS = {
@@ -848,6 +850,17 @@ local function UpdateButtonVisual(button)
     end
     UpdateSpellAlert(button)
     UpdatePromptVisibility(button)
+
+    -- A paddle set to page the action bar never fires its slots. Their
+    -- actions are kept for when it goes back to Backhand actions, but are
+    -- faded behind the page glyph.
+    local navGlyph = GetPaddleBehaviorGlyph(button.paddleIndex)
+    visual.navText:SetText(navGlyph or "")
+    visual.navText:SetShown(navGlyph ~= nil)
+    visual.icon:SetAlpha(navGlyph and 0.25 or 1)
+    if navGlyph then
+        visual.emptyGlyph:Hide()
+    end
 end
 
 local function ApplyFallbackSecureAction(button)
@@ -1032,6 +1045,14 @@ local function ShowTooltip(button)
     button.visual.highlight:SetShown(button.visual.highlight.artAvailable)
     GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
 
+    local behavior = GetPaddleBehavior(button.paddleIndex)
+    if behavior.glyph then
+        GameTooltip:AddLine("Paddle P" .. button.paddleIndex .. ": " .. behavior.label)
+        GameTooltip:AddLine("This paddle pages the native action bar on every layer. Change it on the Backhand settings page or with /backhand paddle.", 1, 1, 1, true)
+        GameTooltip:Show()
+        return
+    end
+
     if button.actionSlot and C_ActionBar.HasAction(button.actionSlot) then
         if GameTooltip.SetAction then
             GameTooltip:SetAction(button.actionSlot)
@@ -1181,6 +1202,11 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     visual.emptyGlyph:SetTexture(GetPaddleTexture(paddleIndex))
     visual.emptyGlyph.artAvailable = true
     visual.emptyGlyph:SetAlpha(0.9)
+
+    -- Page glyph (<, > or a page number) for a paddle that pages the action bar.
+    visual.navText = visual:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    visual.navText:SetPoint("CENTER")
+    visual.navText:Hide()
 
     -- Auto Attack / Auto Shot flash, masked to the icon like the native Flash.
     visual.flash = visual:CreateTexture(nil, "ARTWORK", nil, 0)

@@ -9,6 +9,7 @@ local buttons = ns.buttons
 local focusRouting = ns.focusRouting
 local SafeCall = ns.SafeCall
 local GetPaddleKey = ns.GetPaddleKey
+local GetPaddleNavigationTarget = ns.GetPaddleNavigationTarget
 
 local ltModifier
 local rtModifier
@@ -70,7 +71,9 @@ local function BindPaddlesToPanel(panelIndex)
 
     ClearOverrideBindings(secureDriver)
     for paddleIndex = 1, PADDLE_COUNT do
-        local button = focusRouting.enabled and focusRouting.routers[paddleIndex] or buttons[panelIndex][paddleIndex]
+        local button = GetPaddleNavigationTarget(paddleIndex)
+            or focusRouting.enabled and focusRouting.routers[paddleIndex]
+            or buttons[panelIndex][paddleIndex]
         for _, key in ipairs(GetPaddleBindingKeys(paddleIndex)) do
             SetOverrideBindingClick(secureDriver, true, key, button:GetName(), "LeftButton")
         end
@@ -85,11 +88,14 @@ local function RegisterSecureFrameRefs()
         return
     end
 
+    -- A navigation paddle pages the bar on every layer, so all four of its
+    -- refs point at the same page button and the layer driver needs no
+    -- special case.
     for panelIndex = 1, PANEL_COUNT do
         for paddleIndex = 1, PADDLE_COUNT do
             secureDriver:SetFrameRef(
                 string.format("P%dB%d", panelIndex, paddleIndex),
-                buttons[panelIndex][paddleIndex]
+                GetPaddleNavigationTarget(paddleIndex) or buttons[panelIndex][paddleIndex]
             )
         end
     end

@@ -104,6 +104,7 @@ local function GetDiagnosticLines(separator)
         "Paddle raw mapping: " .. GetPaddleRawMappingDiagnostic(),
         string.format("Paddle inputs: P1=%s   P2=%s   P3=%s   P4=%s",
             tostring(GetPaddleKey(1)), tostring(GetPaddleKey(2)), tostring(GetPaddleKey(3)), tostring(GetPaddleKey(4))),
+        "Paddle behaviors: " .. ns.GetPageNavigationDiagnostic(),
         "Interface style: " .. tostring(C_InputInterfaceStyle and type(C_InputInterfaceStyle.GetCurrentStyle) == "function" and SafeCall(C_InputInterfaceStyle.GetCurrentStyle) or "unknown")
             .. " (CVar InputDeviceInterfaceStyle=" .. tostring(GetGamepadEmulationCVar("InputDeviceInterfaceStyle")) .. ")",
         "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(BackhandDB.gamepadOnly ~= false) .. ")",

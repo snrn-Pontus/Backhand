@@ -16,6 +16,7 @@
 Core.lua
 Database.lua
 ActionStorage.lua
+PageNavigation.lua
 Buttons.lua
 FocusRouting.lua
 Layers.lua
