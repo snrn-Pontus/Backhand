@@ -34,6 +34,7 @@ Options include:
 - Only show in gamepad mode (panels hide in mouse-and-keyboard mode, stay visible while unlocked or in Edit Mode)
 - Controller (Auto, Xbox Elite, DualSense Edge, Generic; Auto detects the connected controller)
 - Paddle inputs (one row per paddle, click to assign by pressing), Assign P1-P4, Setup guide
+- Paddle behavior (per paddle: Backhand actions, or previous / next crossbar page)
 - HUD scale
 - Inactive panel opacity (1.00 = native, no fading)
 - Focus highlight and strength
@@ -67,6 +68,10 @@ The client's own default config for the Elite Series 2 (vendor 1118, product 767
 
 Drag a spell, item, macro, or supported action-bar action onto any paddle slot. Press P1-P4 to activate the corresponding action in the currently active controller layer.
 
+### Paging the crossbar with a paddle
+
+A paddle can page WoW: Forever's native gamepad crossbar instead of firing its slots, as a shortcut for the native `LB + RB + Left / Right` chord. Under **Settings -> AddOns -> Backhand -> Paddle behavior**, click a paddle's button to step through **Backhand actions** (the default), **Previous crossbar page** and **Next crossbar page** (right-click steps back), or use `/backhand paddle`. A navigation paddle pages on every layer (bare, LT, RT, LT + RT) and works in combat; its slots show only the native left or right arrow icon (no cooldown, count or glow) and page the crossbar when clicked too, and the actions stored in them come back when the paddle returns to Backhand actions. Changes made in combat apply when combat ends. Whenever the crossbar page changes (from a paddle or the native chord), the new page number (or S for the special page) shows above the crossbar for a moment and fades out. The paddles skip the special S page, where the pet or possess bar goes when it is set to its own page: from the last page "next" wraps to page 1, and from page 1 "previous" wraps to the last page. The native chord still reaches it. There is no jump to a fixed page: the crossbar only offers secure previous / next paging to addons.
+
 Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<character>\SavedVariables\Backhand.lua`. Paddle keys, panel positions and the appearance settings are shared by every character on the account and live in `WTF\Account\<account>\SavedVariables\Backhand.lua`. Updating from 0.7.6 or older copies the old account-wide actions to each character the first time it logs in, so nothing disappears; clear the slots you do not want on that character with `/backhand clear`.
 
 ## Slash commands
@@ -82,6 +87,7 @@ Paddle actions are saved per character, in `WTF\Account\<account>\<realm>\<chara
 - `/backhand keys [P1 P2 P3 P4 | reset]` — show or set the paddle inputs, e.g. `/backhand keys F13 F14 F15 F16`.
 - `/backhand diag` — print gamepad integration diagnostics, including the paddle inputs and which raw buttons carry PADPADDLE1-4.
 - `/backhand diag copy` — open the same diagnostics as plain text you can select and copy.
+- `/backhand paddle [1-4] [actions|prev|next]` — show or set what a paddle does, e.g. `/backhand paddle 4 next`. `actions` puts it back on its Backhand slots.
 - `/backhand controller [auto|elite|edge|generic]` — show the controller profile, or set it when auto-detection cannot see the real controller (Steam Input, for example).
 - `/backhand test` — for 30 seconds, print the raw controller button index of anything you press and what the client maps it to. Use it to confirm the paddles reach WoW at all.
 - `/backhand learn` — press P1, P2, P3, P4 in order. The addon writes a device config (vendor/product specific) through `C_GamePad.SetConfig` so those raw buttons become PADPADDLE1-4. The client stores it in `WTF/GamePadConfig_AddOns.json`. Learning refuses raw buttons the client already uses (A/B/X/Y, D-pad, ...), because a paddle arriving as one of those means the controller profile mirrors it, and rebinding it would take the button away from the native UI. `/backhand learn force` overrides that check. `/backhand learn cancel` aborts; `/backhand learn clear` deletes the addon's device config again (follow with `/reload`).

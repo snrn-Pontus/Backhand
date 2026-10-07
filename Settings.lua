@@ -15,6 +15,8 @@ local ShowDiagnosticsFrame = ns.ShowDiagnosticsFrame
 local GetProfileSetting = ns.GetProfileSetting
 local GetProfileChoiceLabel = ns.GetProfileChoiceLabel
 local CycleControllerProfileSetting = ns.CycleControllerProfileSetting
+local GetPaddleBehavior = ns.GetPaddleBehavior
+local CyclePaddleBehavior = ns.CyclePaddleBehavior
 
 -- Everything lives on one canvas page built from plain widgets. Forever's
 -- vertical-layout settings list hangs the client when the Settings window is
@@ -146,6 +148,7 @@ local function RegisterSettings()
             button:SetText(buttonText)
         end
         y = y - 28
+        return button
     end
 
     AddSection("Layout")
@@ -221,6 +224,22 @@ local function RegisterSettings()
         end,
         "Step-by-step instructions for the Xbox Accessories app, plus a live readout of what WoW receives when you press a paddle."
     )
+
+    AddSection("Paddle behavior")
+
+    for paddleIndex = 1, PADDLE_COUNT do
+        local button = AddButton(
+            "Paddle P" .. paddleIndex .. " does",
+            function()
+                return GetPaddleBehavior(paddleIndex).label
+            end,
+            function(_, mouseButton)
+                CyclePaddleBehavior(paddleIndex, mouseButton == "RightButton")
+            end,
+            "Backhand actions fires this paddle's slot on the BASE, LT, RT or LT + RT panel. The other choices turn the paddle into native crossbar paging instead, on every layer: previous page or next page. The slot actions are kept and come back when you switch to Backhand actions again. Left-click steps forward, right-click steps back."
+        )
+        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    end
 
     AddSection("Paddle HUD")
 

@@ -117,6 +117,15 @@ local function EnsureDatabase()
         end
     end
 
+    -- What each paddle does. Everyone starts on (and keeps) Backhand actions;
+    -- action-bar navigation is only ever chosen by the user.
+    BackhandDB.paddleBehaviors = type(BackhandDB.paddleBehaviors) == "table" and BackhandDB.paddleBehaviors or {}
+    for paddleIndex = 1, PADDLE_COUNT do
+        if type(BackhandDB.paddleBehaviors["P" .. paddleIndex]) ~= "string" then
+            BackhandDB.paddleBehaviors["P" .. paddleIndex] = "action"
+        end
+    end
+
     -- 0.7 adopts the native crossbar look, where unfocused bars are collapsed
     -- rather than dimmed. Existing profiles are moved to that default once.
     if previousVersion > 0 and previousVersion < 7 then

@@ -78,6 +78,20 @@ local function GetNativeStyleDiagnostic()
     )
 end
 
+-- Crossbar buttons fire their slot plus 12 per action-bar page past the
+-- first, so any page but 1 shifts the native crossbar by one bar per page.
+-- An unreleased build paged paddles that way and could leave it on page 2.
+local function GetActionBarPageDiagnostic()
+    local get = (C_ActionBar and C_ActionBar.GetActionBarPage) or GetActionBarPage
+    local page = get and SafeCall(get)
+    if type(page) ~= "number" then
+        return "Action bar page: unknown"
+    elseif page == 1 then
+        return "Action bar page: 1"
+    end
+    return string.format("Action bar page: %d (should be 1: every crossbar button fires the slot %d further on; switch back with Shift+1 or /run ChangeActionBarPage(1))", page, (page - 1) * 12)
+end
+
 local function GetDiagnosticLines(separator)
     local firstStorage = SafeCall(C_GamepadUI and C_GamepadUI.GetFirstGamepadActionStorageSlotIndex)
     local stanceStorage = SafeCall(C_GamepadUI and C_GamepadUI.GetFirstGamepadActionBarStorageSlotIndexForActiveStance)
@@ -104,6 +118,8 @@ local function GetDiagnosticLines(separator)
         "Paddle raw mapping: " .. GetPaddleRawMappingDiagnostic(),
         string.format("Paddle inputs: P1=%s   P2=%s   P3=%s   P4=%s",
             tostring(GetPaddleKey(1)), tostring(GetPaddleKey(2)), tostring(GetPaddleKey(3)), tostring(GetPaddleKey(4))),
+        "Paddle behaviors: " .. ns.GetPageNavigationDiagnostic(),
+        GetActionBarPageDiagnostic(),
         "Interface style: " .. tostring(C_InputInterfaceStyle and type(C_InputInterfaceStyle.GetCurrentStyle) == "function" and SafeCall(C_InputInterfaceStyle.GetCurrentStyle) or "unknown")
             .. " (CVar InputDeviceInterfaceStyle=" .. tostring(GetGamepadEmulationCVar("InputDeviceInterfaceStyle")) .. ")",
         "Panels shown: " .. tostring(panelFrames[1] and panelFrames[1]:IsShown()) .. " (gamepad interface=" .. tostring(IsGamepadInterfaceActive()) .. ", gamepad only=" .. tostring(BackhandDB.gamepadOnly ~= false) .. ")",
