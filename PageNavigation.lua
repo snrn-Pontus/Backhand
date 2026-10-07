@@ -2,9 +2,12 @@
 -- Each paddle has a behavior: its Backhand actions (the default), or the
 -- previous or next crossbar page.
 --
--- The gamepad crossbar keeps its own page (GamepadMainActionBarFrame.PageUnit)
--- and ignores C_ActionBar's page, so the secure "actionbar" action type does
--- nothing to it. Its only secure way to page is the page tracker's
+-- The gamepad crossbar keeps its own page (GamepadMainActionBarFrame.PageUnit),
+-- so the secure "actionbar" action type does not page it. Worse, that type
+-- changes C_ActionBar's page, and every crossbar button fires its storage slot
+-- plus 12 per action-bar page past the first (SecureActionButtonMixin:
+-- CalculateAction; the buttons set no actionpage), which shifts the whole
+-- crossbar by one bar per page. Never page with "actionbar" here. Its only secure way to page is the page tracker's
 -- ChangePageButton, which steps forward on LeftButton and back on RightButton;
 -- the native D-pad shortcuts and LB + RB chord go through it too. A hidden
 -- secure step button hands a click to it, and navigation paddles (and their
