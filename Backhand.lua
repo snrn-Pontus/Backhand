@@ -160,19 +160,19 @@ local function ClearSlot(panelArg, paddleArg)
     Print(string.format("Cleared %s P%d.", PANELS[panelIndex].label, paddleIndex))
 end
 
--- /backhand paddle [1-4] [actions|prev|next|page <n>]
-local function HandlePaddleCommand(paddleArg, behaviorArg, pageArg)
+-- /backhand paddle [1-4] [actions|prev|next]
+local function HandlePaddleCommand(paddleArg, behaviorArg)
     local paddleIndex = tonumber(paddleArg)
     if paddleArg and (not paddleIndex or paddleIndex ~= math.floor(paddleIndex)
         or paddleIndex < 1 or paddleIndex > PADDLE_COUNT) then
-        Print(string.format("Usage: /backhand paddle [1-4] [actions|prev|next|page <1-%d>]", ns.PAGE_COUNT))
+        Print("Usage: /backhand paddle [1-4] [actions|prev|next]")
         return
     end
 
     if paddleIndex and behaviorArg then
-        local value = ParsePaddleBehavior(behaviorArg, pageArg)
+        local value = ParsePaddleBehavior(behaviorArg)
         if not value then
-            Print(string.format("Usage: /backhand paddle [1-4] [actions|prev|next|page <1-%d>]", ns.PAGE_COUNT))
+            Print("Usage: /backhand paddle [1-4] [actions|prev|next]")
             return
         end
         SetPaddleBehavior(paddleIndex, value)
@@ -201,7 +201,7 @@ local function PrintHelp()
     Print("/backhand assign [1-4] - assign one paddle, or all four in order, by pressing it")
     Print("/backhand keys [P1 P2 P3 P4 | reset] - show or set the inputs, e.g. /backhand keys F13 F14 F15 F16")
     Print("/backhand controller [auto|elite|edge|generic] - show or set the controller profile")
-    Print("/backhand paddle [1-4] [actions|prev|next|page <n>] - show or set what a paddle does: its actions, or action-bar paging")
+    Print("/backhand paddle [1-4] [actions|prev|next] - show or set what a paddle does: its actions, or crossbar paging")
     Print("/backhand test - print which raw controller buttons fire when you press the paddles")
     Print("/backhand glowtest - toggle the proc glow on every filled slot, to check that it draws")
     Print("/backhand learn - press P1-P4 in order to map them to PADPADDLE1-4 in the client's gamepad config")
@@ -279,7 +279,7 @@ SlashCmdList.BACKHAND = function(message)
             end
         end
     elseif command == "paddle" or command == "behavior" then
-        HandlePaddleCommand(args[2], args[3], args[4])
+        HandlePaddleCommand(args[2], args[3])
     elseif command == "controller" then
         HandleControllerCommand(args[2])
     elseif command == "glowtest" then

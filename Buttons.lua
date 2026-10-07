@@ -24,7 +24,8 @@ local GetNativeCVarBool = ns.GetNativeCVarBool
 local IsEditable = ns.IsEditable
 local GetNativeSlot = ns.GetNativeSlot
 local GetPaddleBehavior = ns.GetPaddleBehavior
-local GetPaddleBehaviorGlyph = ns.GetPaddleBehaviorGlyph
+local GetPaddleBehaviorIcon = ns.GetPaddleBehaviorIcon
+local ApplySlotNavigation = ns.ApplySlotNavigation
 
 -- Reading order: P1 and P2 on the top row, P3 and P4 on the bottom row.
 local GRID_CELLS = {
@@ -676,6 +677,10 @@ end
 local spellAlertTest = false
 
 local function UpdateSpellAlert(button)
+    if GetPaddleBehaviorIcon(button.paddleIndex) then
+        SetSpellAlertShown(button, false)
+        return
+    end
     if spellAlertTest then
         SetSpellAlertShown(button, button.hasAction == true)
         return
@@ -787,7 +792,32 @@ local function UpdatePromptVisibility(button)
     button.visual.prompt:SetShown(shown and button.visual.prompt.artAvailable)
 end
 
+-- A paddle set to page the crossbar never fires its slots. They show only
+-- the paging arrow; the actions stored in them are kept, without their
+-- cooldowns, counts or states, for when it goes back to Backhand actions.
+local function UpdateNavigationVisual(button, navIcon)
+    local visual = button.visual
+    button.hasAction = false
+    ClearCooldown(button)
+    visual.icon:SetTexture(navIcon)
+    visual.icon:SetVertexColor(1, 1, 1)
+    visual.icon:Show()
+    visual.emptyGlyph:Hide()
+    visual.count:SetText("")
+    UpdateActionState(button)
+    SetRangeCheckEnabled(button, false)
+    UpdateRangeIndicator(button, false, false)
+    UpdateSpellAlert(button)
+    UpdatePromptVisibility(button)
+end
+
 local function UpdateButtonVisual(button)
+    local navIcon = GetPaddleBehaviorIcon(button.paddleIndex)
+    if navIcon then
+        UpdateNavigationVisual(button, navIcon)
+        return
+    end
+
     local visual = button.visual
     local icon
     local hasAction = false
@@ -850,17 +880,6 @@ local function UpdateButtonVisual(button)
     end
     UpdateSpellAlert(button)
     UpdatePromptVisibility(button)
-
-    -- A paddle set to page the action bar never fires its slots. Their
-    -- actions are kept for when it goes back to Backhand actions, but are
-    -- faded behind the page glyph.
-    local navGlyph = GetPaddleBehaviorGlyph(button.paddleIndex)
-    visual.navText:SetText(navGlyph or "")
-    visual.navText:SetShown(navGlyph ~= nil)
-    visual.icon:SetAlpha(navGlyph and 0.25 or 1)
-    if navGlyph then
-        visual.emptyGlyph:Hide()
-    end
 end
 
 local function ApplyFallbackSecureAction(button)
@@ -906,6 +925,8 @@ local function ConfigureSecureAction(button)
     else
         ApplyFallbackSecureAction(button)
     end
+    -- A navigation paddle's slots page instead (overrides the type).
+    ApplySlotNavigation(button, GetPaddleBehavior(button.paddleIndex))
     focusRouting.SyncAttributes(button)
 end
 
@@ -953,6 +974,10 @@ local function SetFallbackAction(button, action)
 end
 
 local function PutCursorIntoButton(button)
+    -- Slots of a paddle that pages the crossbar show only the arrow.
+    if GetPaddleBehaviorIcon(button.paddleIndex) then
+        return
+    end
     if InCombatLockdown() then
         Print("Actions cannot be changed during combat.")
         return
@@ -984,6 +1009,9 @@ local function PutCursorIntoButton(button)
 end
 
 local function PickupButtonAction(button)
+    if GetPaddleBehaviorIcon(button.paddleIndex) then
+        return
+    end
     if InCombatLockdown() then
         return
     end
@@ -1046,9 +1074,9 @@ local function ShowTooltip(button)
     GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
 
     local behavior = GetPaddleBehavior(button.paddleIndex)
-    if behavior.glyph then
+    if behavior.icon then
         GameTooltip:AddLine("Paddle P" .. button.paddleIndex .. ": " .. behavior.label)
-        GameTooltip:AddLine("This paddle pages the native action bar on every layer. Change it on the Backhand settings page or with /backhand paddle.", 1, 1, 1, true)
+        GameTooltip:AddLine("This paddle pages the native crossbar on every layer. Change it on the Backhand settings page or with /backhand paddle.", 1, 1, 1, true)
         GameTooltip:Show()
         return
     end
@@ -1202,11 +1230,6 @@ local function CreateActionButton(panelIndex, paddleIndex, panel)
     visual.emptyGlyph:SetTexture(GetPaddleTexture(paddleIndex))
     visual.emptyGlyph.artAvailable = true
     visual.emptyGlyph:SetAlpha(0.9)
-
-    -- Page glyph (<, > or a page number) for a paddle that pages the action bar.
-    visual.navText = visual:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-    visual.navText:SetPoint("CENTER")
-    visual.navText:Hide()
 
     -- Auto Attack / Auto Shot flash, masked to the icon like the native Flash.
     visual.flash = visual:CreateTexture(nil, "ARTWORK", nil, 0)

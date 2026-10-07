@@ -236,7 +236,7 @@ local function RegisterSettings()
             function(_, mouseButton)
                 CyclePaddleBehavior(paddleIndex, mouseButton == "RightButton")
             end,
-            "Backhand actions fires this paddle's slot on the BASE, LT, RT or LT + RT panel. The other choices turn the paddle into native action-bar navigation instead, on every layer: previous page, next page, or a jump straight to one page. The slot actions are kept and come back when you switch to Backhand actions again. Left-click steps forward, right-click steps back."
+            "Backhand actions fires this paddle's slot on the BASE, LT, RT or LT + RT panel. The other choices turn the paddle into native crossbar paging instead, on every layer: previous page or next page. The slot actions are kept and come back when you switch to Backhand actions again. Left-click steps forward, right-click steps back."
         )
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     end
