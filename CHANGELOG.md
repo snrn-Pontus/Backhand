@@ -1,5 +1,9 @@
 # Backhand changelog
 
+## 0.9.1 — Hide the page arrows
+
+- **Option to hide the page arrows.** Under **Paddle behavior** on the Settings page, **Show page arrows on paging paddle slots** (on by default) can be turned off to leave the slots of a paddle that pages the crossbar empty on all four panels, for when you know your paging paddles by heart. The paddle still pages, in combat too. The setting is account-wide and can be changed in combat.
+
 ## 0.9.0 — Crossbar paging
 
 - **Controller profile.** Backhand now recognises which paddle controller is connected: Xbox Elite (four paddles), DualSense Edge (two back buttons) or a generic controller. It reads the active controller's vendor and product IDs and name, and updates when a controller is connected, disconnected or switched, without a reload. Nothing changes on screen yet; the profile is groundwork for controller-specific layouts. Steam Input and some drivers hide the real controller, so the Settings page has a **Controller** button (Auto, Xbox Elite, DualSense Edge, Generic) and `/backhand controller [auto|elite|edge|generic]` sets it from chat. Changing it never touches paddle keys or actions. `/backhand diag` shows the controller's name, IDs, label style and the resolved profile (#2).

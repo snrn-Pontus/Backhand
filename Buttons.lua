@@ -793,10 +793,13 @@ local function UpdatePromptVisibility(button)
 end
 
 -- A paddle set to page the crossbar never fires its slots. They show only
--- the paging arrow; the actions stored in them are kept, without their
--- cooldowns, counts or states, for when it goes back to Backhand actions.
+-- the paging arrow, or nothing at all with showPageArrows off (the slots
+-- still page when clicked); the actions stored in them are kept, without
+-- their cooldowns, counts or states, for when it goes back to Backhand
+-- actions. The visual frame is not secure, so this is safe in combat.
 local function UpdateNavigationVisual(button, navIcon)
     local visual = button.visual
+    visual:SetShown(BackhandDB.showPageArrows ~= false)
     button.hasAction = false
     ClearCooldown(button)
     visual.icon:SetTexture(navIcon)
@@ -819,6 +822,7 @@ local function UpdateButtonVisual(button)
     end
 
     local visual = button.visual
+    visual:Show()
     local icon
     local hasAction = false
 
