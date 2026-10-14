@@ -241,6 +241,15 @@ local function RegisterSettings()
         button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     end
 
+    AddCheckbox(
+        "showPageArrows",
+        "Show page arrows on paging paddle slots",
+        "Draws the native left or right arrow on all four panels' slots of a paddle that pages the crossbar. Turn it off to leave those slots empty; the paddle still pages.",
+        function()
+            ns.UpdateAllButtonVisuals()
+        end
+    )
+
     AddSection("Paddle HUD")
 
     AddSlider(

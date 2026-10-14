@@ -6,10 +6,10 @@ Forever's crossbar gives you the d-pad and the face buttons on four layers (no t
 
 ## What's new
 
+- **0.9.1**: New option under **Paddle behavior** to hide the arrows on the slots of paging paddles, so they stay empty once you know your paddles. Thanks for the idea!
 - **0.9.0**: A paddle can page the native crossbar: set it to previous or next page and its slots turn into the crossbar's own arrows. It works in combat, skips the pet / possess page, and the new page number flashes above the crossbar. Paddle slots also show the native active, auto-attack and equipped states, spell charges and loss-of-control cooldowns, and Backhand detects whether you use an Xbox Elite, a DualSense Edge or another controller.
 - **0.8.2**: Paddle slots show the same proc glow as the native crossbar when a proc lights up their spell. Like the native buttons, reactive abilities such as Mongoose Bite do not glow.
 - **0.8.1**: The paddle panels collapse while a menu, your bags or the settings have controller focus, like the native crossbar, and expand again when you return to the game.
-- **0.8.0**: PaddleSlots is now **SNRN Backhand**, part of the SNRN addon family. Settings and paddle actions start fresh after the update: assign the paddle keys again (`/backhand assign`) and drag your actions back. If an old `PaddleSlots` folder is left in `Interface\AddOns`, delete it.
 
 Full history on the Changelog tab of each file.
 
@@ -46,7 +46,7 @@ On Windows the Xbox Elite Series 2 does not report its paddles to games, and the
 
 ## Page the crossbar with a paddle
 
-Any paddle can page the native crossbar instead of firing its slots, as a one-button shortcut for LB + RB + Left / Right. In the settings, under **Paddle behavior**, set a paddle to **Previous crossbar page** or **Next crossbar page**, or use `/backhand paddle 4 next`. It pages on every layer and in combat, the slots show the crossbar's own arrows, and the page number flashes above the crossbar. The paddles skip the pet / possess page and wrap from the last page back to page 1. The actions you had on that paddle are kept for when you switch it back.
+Any paddle can page the native crossbar instead of firing its slots, as a one-button shortcut for LB + RB + Left / Right. In the settings, under **Paddle behavior**, set a paddle to **Previous crossbar page** or **Next crossbar page**, or use `/backhand paddle 4 next`. It pages on every layer and in combat, the slots show the crossbar's own arrows (or nothing, if you turn the arrows off), and the page number flashes above the crossbar. The paddles skip the pet / possess page and wrap from the last page back to page 1. The actions you had on that paddle are kept for when you switch it back.
 
 ## Moving the panels
 

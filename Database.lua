@@ -99,6 +99,9 @@ local function EnsureDatabase()
     if BackhandDB.showPaddleBadges == nil then
         BackhandDB.showPaddleBadges = true
     end
+    if BackhandDB.showPageArrows == nil then
+        BackhandDB.showPageArrows = true
+    end
     if BackhandDB.showPanelLabels == nil then
         BackhandDB.showPanelLabels = false
     end
